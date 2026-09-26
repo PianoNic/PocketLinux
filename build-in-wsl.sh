@@ -20,6 +20,14 @@ sed -i 's/\r$//' gradlew
 find app/src/main/assets -type f -exec sed -i 's/\r$//' {} +
 chmod +x gradlew
 
+# glibc preload library that lets .NET work without /tmp (see glibc-shim/tmp-redirect.c).
+if command -v aarch64-linux-gnu-gcc >/dev/null; then
+  aarch64-linux-gnu-gcc -O2 -Wall -shared -fPIC -o app/src/main/assets/desktop/libtmp-redirect.so \
+    glibc-shim/tmp-redirect.c -ldl
+else
+  echo "WARNING: aarch64-linux-gnu-gcc missing (apt install gcc-aarch64-linux-gnu), building without the .NET /tmp fix" >&2
+fi
+
 ./gradlew --console=plain :app:assembleDebug "$@"
 
 APK=$(ls -t app/build/outputs/apk/debug/*.apk | head -1)

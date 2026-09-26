@@ -1,8 +1,34 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# glibc .NET wrapper: no bionic LD_PRELOAD, build servers off (their mutexes expect /tmp)
-[ -x "$HOME/.dotnet/dotnet" ] || { echo ".NET not installed. Run: desktop-setup"; exit 1; }
+# .NET SDK (glibc build) on Android. Prepares things on first use and after SDK updates:
+#  - tmp-redirect: .NET keeps its named mutexes under a hardcoded /tmp, which Android does
+#    not have; this glibc preload library sends /tmp/... to $TMPDIR (glibc programs only)
+#  - the SDK's own programs (csc, apphost template, ...) are glibc ELF files that look for
+#    /lib/ld-linux-aarch64.so.1; they get pointed at Termux's glibc loader
+DN="$HOME/.dotnet"
+[ -x "$DN/dotnet" ] || { echo ".NET not installed. Run: desktop-setup"; exit 1; }
 mkdir -p "$PREFIX/tmp"
+
+GLIBC="$PREFIX/glibc"
+SHIM_SRC="$PREFIX/libexec/desktop/libtmp-redirect.so"
+SHIM="$GLIBC/lib/libtmp-redirect.so"
+if [ -f "$SHIM_SRC" ] && [ -d "$GLIBC/lib" ]; then
+  cmp -s "$SHIM_SRC" "$SHIM" || cp "$SHIM_SRC" "$SHIM"
+  grep -qxF "$SHIM" "$GLIBC/etc/ld.so.preload" 2>/dev/null ||
+    { mkdir -p "$GLIBC/etc"; echo "$SHIM" >> "$GLIBC/etc/ld.so.preload"; }
+fi
+
+# Patch the SDK's ELF programs once per installed SDK set.
+STAMP="$DN/.pocket-patched"
+SDKS=$(ls -1 "$DN/sdk" "$DN/shared/Microsoft.NETCore.App" 2>/dev/null | tr '\n' ' ')
+if [ "$(cat "$STAMP" 2>/dev/null)" != "$SDKS" ]; then
+  while IFS= read -r -d '' f; do
+    [ "$(od -An -c -N4 "$f" 2>/dev/null | tr -d ' ')" = '177ELF' ] || continue
+    grun -c "$f" >/dev/null 2>&1
+  done < <(find "$DN" -type f \( -perm -u+x -o -name apphost -o -name singlefilehost \) ! -name '*.so' -print0)
+  echo "$SDKS" > "$STAMP"
+fi
+
 exec env -u LD_PRELOAD \
   TMPDIR="$PREFIX/tmp" SSL_CERT_FILE="$PREFIX/etc/tls/cert.pem" \
-  DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_CLI_USE_MSBUILD_SERVER=0 MSBUILDDISABLENODEREUSE=1 \
-  DOTNET_ROOT="$HOME/.dotnet" "$HOME/.dotnet/dotnet" "$@"
+  DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_NOLOGO=1 \
+  DOTNET_ROOT="$DN" "$DN/dotnet" "$@"

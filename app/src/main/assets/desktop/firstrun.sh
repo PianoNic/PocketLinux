@@ -41,7 +41,7 @@ npm install -g @angular/cli pnpm || warn "npm globals failed"
 pkgi code-server 2>/dev/null || warn "code-server not available right now"
 
 step ".NET SDK via glibc-runner (experimental)"
-if pkgi glibc glibc-runner; then
+if pkgi glibc glibc-runner libicu-glibc; then   # ICU: .NET aborts without it
   curl -fsSL https://dot.net/v1/dotnet-install.sh -o "$PREFIX/tmp/dotnet-install.sh" && \
   env -u LD_PRELOAD bash "$PREFIX/tmp/dotnet-install.sh" --channel LTS --os linux --architecture arm64 \
       --install-dir "$HOME/.dotnet" && \

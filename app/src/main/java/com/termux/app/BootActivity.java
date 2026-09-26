@@ -253,6 +253,9 @@ public class BootActivity extends Activity {
             copyAsset("desktop/firstrun.sh", new File(libexec, "firstrun.sh"));
             // apt hook that moves every package to this app's data directory (see Relocator).
             copyAsset("desktop/relocate-debs", new File(libexec, "relocate-debs"));
+            // glibc preload library for .NET (redirects its hardcoded /tmp); set up by bin/dotnet.
+            try { copyAsset("desktop/libtmp-redirect.so", new File(libexec, "libtmp-redirect.so")); }
+            catch (Exception ignored) { } // built without the cross compiler
             File aptConf = new File(PREFIX, "etc/apt/apt.conf.d");
             aptConf.mkdirs();
             copyAsset("desktop/apt-relocate.conf", new File(aptConf, "99-pocket-relocate.conf"));

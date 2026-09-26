@@ -53,6 +53,21 @@ wsl -d Debian -- bash /mnt/c/Coding/PocketLinux/build-in-wsl.sh
 recursively. Keep LF line endings (the repo's `.gitattributes` does that); the X server's
 patches do not apply to CRLF files.
 
+## Releases
+
+GitHub Actions builds every push to `main` (APK as a workflow artifact). To publish a
+version, create a GitHub release with a tag like `v0.128.0`: the `Release` workflow builds
+the APK with that version, signs it with the Pocket Linux key and attaches it to the
+release. `versionCode` comes from the tag (`major*1000000 + minor*1000 + patch`), so tags
+must keep going up.
+
+Signing uses the repo secrets `POCKET_KEYSTORE_BASE64`, `POCKET_KEYSTORE_PASSWORD`,
+`POCKET_KEY_ALIAS` and `POCKET_KEY_PASSWORD`. Locally, release builds read
+`keystore.properties` in the repo root (ignored by git). **Back up the keystore**: Android
+only installs updates signed with the same key, so losing it means users have to reinstall.
+Debug builds are signed with the public Termux test key and cannot update a release
+install (and the other way round).
+
 ## Layout
 
 | Path | What |

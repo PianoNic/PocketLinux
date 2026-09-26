@@ -1,96 +1,136 @@
-# Pocket Linux
+<p align="center">
+  <img src="assets/icon.svg" width="160" alt="Pocket Linux Logo" />
+</p>
+<p align="center">
+  <strong>Pocket Linux</strong><br/>
+  A real Linux desktop in your pocket. One app, no root, no second app.
+</p>
+<p align="center">
+  <a href="https://github.com/PianoNic/PocketLinux"><img src="https://badgetrack.pianonic.ch/badge?tag=pocketlinux&label=visits&color=0d1117&style=flat" alt="visits" /></a>
+  <a href="https://github.com/PianoNic/PocketLinux/releases"><img src="https://img.shields.io/github/v/release/PianoNic/PocketLinux?include_prereleases&color=0d1117&label=Latest" alt="Latest release" /></a>
+  <img src="https://img.shields.io/badge/Android-7%2B-0d1117.svg" alt="Android 7+" />
+  <img src="https://img.shields.io/badge/arm64-only-0d1117.svg" alt="arm64 only" />
+  <img src="https://img.shields.io/badge/License-GPLv3-0d1117.svg" alt="GPLv3" />
+</p>
 
-A full Linux desktop in one Android app. Open it and it boots straight into XFCE, with
-the display built in, no terminal UI, no second app. Made for the Galaxy S25 Ultra
-(Snapdragon 8 Elite, arm64), where a locked bootloader rules out real dual boot.
+---
 
-It is a fork of [Termux](https://github.com/termux/termux-app) with
-[Termux:X11](https://github.com/termux/termux-x11) built in, and it uses the regular
-Termux package repositories.
+> **Heads up:** Pocket Linux is in early development. It is built and tested on a Galaxy S25 Ultra
+> (Snapdragon 8 Elite); other arm64 phones should work but are untested. The first start installs
+> about 5 GB (including .NET) and takes around 20 minutes.
 
-## What it does
+## What is Pocket Linux?
 
-- **Boot screen only**: first start downloads the base system, installs XFCE, Firefox,
-  dev tools (Node, Angular CLI, Python, clang, Rust, .NET via glibc-runner) and a
-  Plasma-like Breeze theme, then opens the desktop. Later starts open the desktop directly.
-- **Built-in display**: the X server runs from the app's own APK and the display is an
-  activity of this app. Resolution follows the window and the scale follows the screen
-  density, so it fits the phone, split screen and external monitors.
-- **Survives Android's process limit**: Android 12+ kills an app's background processes
-  beyond 32. The desktop is trimmed to about 12 and Firefox to about 6, and a watchdog
-  restarts whatever still dies, so the "Disable child process restrictions" developer
-  option is not needed.
-- **Own app ID `ch.pocketl`**: installs next to Termux. See below for how.
+Pocket Linux turns your phone into a Linux desktop. Open the app and it boots straight into XFCE:
+windows, a panel, Firefox, a terminal, your dev tools. No terminal app to set up, no separate
+display app, no root and no unlocked bootloader.
 
-## How the own app ID works
+Under the hood it is [Termux](https://github.com/termux/termux-app) with
+[Termux:X11](https://github.com/termux/termux-x11) built in, trimmed down to a single boot screen
+and running on the regular Termux package repositories.
 
-Termux packages have `/data/data/com.termux/files/usr` compiled into their programs,
-libraries and scripts. `ch.pocketl` has exactly as many characters as `com.termux`, so
-the path can be swapped byte for byte, even inside compiled programs, without shifting
-anything:
+<p align="center">
+  <img src="assets/screenshot.png" alt="Pocket Linux in landscape: Firefox and a terminal on the XFCE desktop" />
+</p>
 
-- the base system is rewritten while it is unpacked (`Relocator.java`)
-- every package installed later goes through an apt hook that rewrites and repacks it
-  right before dpkg runs (`assets/desktop/relocate-debs`)
+## Features
 
-The app ID must therefore stay 10 characters long.
+- **Boots into the desktop** - the app has one screen that sets everything up once, then every start
+  opens XFCE directly.
+- **Display built in** - the X server runs inside the app, no Termux:X11 install needed.
+- **Fits any screen** - resolution follows the window and the scale follows the screen density:
+  portrait, landscape, split screen and external monitors.
+- **Plasma look** - Breeze Dark theme, icons and cursor, Noto Sans, one bottom panel with Whisker
+  Menu and a dock-like taskbar. `desktop-theme light` switches to Breeze light.
+- **Dev tools included** - Node, Angular CLI, Python, clang, Rust, git, Neovim, code-server and
+  **.NET 10** (`dotnet new`, `build` and `run` work).
+- **Survives Android** - Android 12+ kills an app's background processes past 32. Pocket Linux keeps
+  the desktop well below that and a watchdog brings back anything that still dies, so no developer
+  options are needed.
+- **Next to Termux** - own app ID (`ch.pocketl`), so it installs alongside Termux without clashing.
+- **Quiet** - one low-priority notification with Display settings and Shut down, nothing else.
 
-## Build
+## Installation
 
-The X server needs a Linux host to build, so the build runs in WSL (or any Linux).
+1. Download the latest APK from the [Releases](https://github.com/PianoNic/PocketLinux/releases) page.
+2. Install it and open **Pocket Linux**.
+3. Keep the app open for the first setup (about 20 minutes, needs internet and about 5 GB of space).
 
-One time, in WSL: JDK 17+, `bison`, `rsync`, and an Android SDK with platform 36,
-build-tools 36, NDK 29.0.14206865 and CMake 3.22.1 in `~/android-sdk`.
+Updates install over the existing app and keep your files.
+
+## Inside the desktop
+
+| Command | What it does |
+| --- | --- |
+| `desktop` | Start or repair the desktop |
+| `desktop-theme dark` / `light` | Reapply the Plasma-like look |
+| `gpu <program>` | Run one program with GPU acceleration (experimental on Adreno 830) |
+| `desktop-setup` | Run the first-start setup again |
+| `displays` / `desktop <id>` | Put the desktop on another display (needs Shizuku) |
+
+## Building from Source
+
+The X server has to be built on Linux, so on Windows the build runs in WSL.
+
+One time, in WSL: JDK 17+, `bison`, `rsync`, `gcc-aarch64-linux-gnu`, and an Android SDK in
+`~/android-sdk` with platform 36, build-tools 36, NDK 29.0.14206865 and CMake 3.22.1.
 
 ```bash
 git clone --recurse-submodules https://github.com/PianoNic/PocketLinux
-# from Windows:
 wsl -d Debian -- bash /mnt/c/Coding/PocketLinux/build-in-wsl.sh
 # -> dist/pocket-linux-v<version>.apk
 ```
 
-`external/termux-x11` is a git submodule and has submodules of its own, so clone
-recursively. Keep LF line endings (the repo's `.gitattributes` does that); the X server's
-patches do not apply to CRLF files.
+Keep LF line endings (`.gitattributes` does that): the X server's patches do not apply to CRLF files.
 
-## Releases
+### Releases
 
-GitHub Actions builds every push to `main` (APK as a workflow artifact). To publish a
-version, create a GitHub release with a tag like `v0.128.0`: the `Release` workflow builds
-the APK with that version, signs it with the Pocket Linux key and attaches it to the
-release. `versionCode` comes from the tag (`major*1000000 + minor*1000 + patch`), so tags
-must keep going up.
+Every push to `main` is built by GitHub Actions. Publishing a GitHub release with a tag like `v0.2.0`
+builds the APK with that version, signs it and attaches it to the release. Tags must keep going up,
+`versionCode` is `major*1000000 + minor*1000 + patch`.
 
 Signing uses the repo secrets `POCKET_KEYSTORE_BASE64`, `POCKET_KEYSTORE_PASSWORD`,
-`POCKET_KEY_ALIAS` and `POCKET_KEY_PASSWORD`. Locally, release builds read
-`keystore.properties` in the repo root (ignored by git). **Back up the keystore**: Android
-only installs updates signed with the same key, so losing it means users have to reinstall.
-Debug builds are signed with the public Termux test key and cannot update a release
-install (and the other way round).
+`POCKET_KEY_ALIAS` and `POCKET_KEY_PASSWORD`, locally a `keystore.properties` in the repo root
+(ignored by git). Debug builds use the public Termux test key and cannot update a release install.
 
-## Layout
+<details>
+<summary><strong>How it works</strong></summary>
+
+**Own app ID.** Termux packages have `/data/data/com.termux/files/usr` compiled into their programs,
+libraries and scripts. `ch.pocketl` has exactly as many characters as `com.termux`, so the path can
+be swapped byte for byte, even inside compiled programs, without shifting anything. The base system
+is rewritten while it is unpacked (`Relocator.java`), every later package goes through an apt hook
+that rewrites and repacks it right before dpkg runs (`relocate-debs`). The app ID therefore has to
+stay 10 characters long.
+
+**Process limit.** The session drops the power manager, notification daemon, gvfs, thumbnailer and
+agents, Firefox runs without Fission and with two content processes, and leftovers from crashed
+sessions are cleaned up through `/proc`. The whole desktop with two Firefox windows stays around 19
+processes.
+
+**.NET.** The .NET runtime keeps its named mutexes under a hardcoded `/tmp`, which Android does not
+have. `glibc-shim/tmp-redirect.c` is loaded through glibc's `ld.so.preload` (so bionic programs are
+untouched) and sends `/tmp/...` to `$TMPDIR`. The SDK's own programs are pointed at Termux's glibc
+loader the first time `dotnet` runs.
 
 | Path | What |
-|---|---|
-| `app/src/main/java/com/termux/app/BootActivity.java` | the boot screen (install, setup, logs) |
-| `app/src/main/java/com/termux/app/DesktopService.java` | keeps the desktop alive, watchdog |
-| `app/src/main/java/com/termux/app/PocketDisplay.java` | display defaults and automatic scale |
-| `app/src/main/java/com/termux/app/Relocator.java` | moves Termux paths to this app's ID |
-| `app/src/main/assets/desktop/` | first-run setup, `desktop`, `desktop-theme`, `gpu`, apt hook |
-| `external/termux-x11` | Termux:X11 (X server + display), built in as a library |
-| `art/pocket-linux-icon.svg` | icon source; `art/render-legacy-icons.sh` renders the PNGs |
+| --- | --- |
+| `app/src/main/java/com/termux/app/BootActivity.java` | The boot screen: install, setup, logs |
+| `app/src/main/java/com/termux/app/DesktopService.java` | Keeps the desktop alive, watchdog |
+| `app/src/main/java/com/termux/app/PocketDisplay.java` | Display defaults and automatic scale |
+| `app/src/main/java/com/termux/app/Relocator.java` | Moves Termux paths to this app's ID |
+| `app/src/main/assets/desktop/` | First-run setup, `desktop`, `desktop-theme`, `gpu`, apt hook |
+| `external/termux-x11` | Termux:X11 (X server and display), built in as a library |
+| `glibc-shim/` | `/tmp` redirect for .NET |
 
-## Commands inside the desktop
+</details>
 
-| Command | What |
-|---|---|
-| `desktop` | start or repair the desktop |
-| `desktop-theme dark` / `light` | Breeze look, bottom panel with Whisker Menu and Docklike |
-| `gpu <program>` | run one program with GPU acceleration (Turnip/Zink, experimental on Adreno 830) |
-| `desktop-setup` | run the first-start setup again |
+## Credits
 
-## Credits and license
+Built on [Termux](https://github.com/termux/termux-app) and
+[Termux:X11](https://github.com/termux/termux-x11). All Linux packages come from the Termux
+package repositories.
 
-Based on [Termux](https://github.com/termux/termux-app) and
-[Termux:X11](https://github.com/termux/termux-x11), both GPLv3. Pocket Linux is GPLv3
-as well, see [LICENSE.md](LICENSE.md). Packages come from the Termux repositories.
+## License
+
+[GPLv3](LICENSE.md), like Termux and Termux:X11.

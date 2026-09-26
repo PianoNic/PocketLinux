@@ -3,3 +3,6 @@
 *.gradle    text eol=lf
 *.mk        text eol=lf
 *.sh        text eol=lf
+
+# Pocket Linux: scripts and configs copied onto the phone must keep LF line endings
+app/src/main/assets/desktop/** text eol=lf

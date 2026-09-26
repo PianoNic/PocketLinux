@@ -1,0 +1,56 @@
+name: Release
+
+# Publishing a GitHub release (tag like v0.128.0) builds a signed APK with that version
+# and attaches it to the release. Can also be re-run by hand for an existing tag.
+on:
+  release:
+    types: [ published ]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to build and attach (e.g. v0.128.0)
+        required: true
+
+permissions:
+  contents: write   # upload the APK to the release
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.TAG }}
+          submodules: recursive
+
+      - uses: ./.github/actions/setup-build
+
+      - name: Check tag format
+        run: |
+          [[ "$TAG" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$ ]] ||
+            { echo "::error::Tag '$TAG' must look like v1.2.3"; exit 1; }
+
+      - name: Build signed release APK
+        env:
+          POCKET_VERSION: ${{ env.TAG }}
+          KEYSTORE_BASE64: ${{ secrets.POCKET_KEYSTORE_BASE64 }}
+          POCKET_KEYSTORE_PASSWORD: ${{ secrets.POCKET_KEYSTORE_PASSWORD }}
+          POCKET_KEY_ALIAS: ${{ secrets.POCKET_KEY_ALIAS }}
+          POCKET_KEY_PASSWORD: ${{ secrets.POCKET_KEY_PASSWORD }}
+        run: |
+          [ -n "$KEYSTORE_BASE64" ] || { echo "::error::Secret POCKET_KEYSTORE_BASE64 is missing"; exit 1; }
+          export POCKET_KEYSTORE="$RUNNER_TEMP/release.jks"
+          echo "$KEYSTORE_BASE64" | base64 -d > "$POCKET_KEYSTORE"
+          bash scripts/build-glibc-shim.sh
+          ./gradlew --console=plain :app:assembleRelease
+          rm -f "$POCKET_KEYSTORE"
+          mkdir -p dist
+          cp app/build/outputs/apk/release/*.apk "dist/pocket-linux-${TAG}.apk"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "dist/pocket-linux-${TAG}.apk" | head -3
+
+      - name: Attach APK to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" "dist/pocket-linux-${TAG}.apk" --clobber

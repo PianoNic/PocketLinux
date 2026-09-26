@@ -1,0 +1,27 @@
+name: Set up Pocket Linux build
+description: JDK, Android SDK/NDK/CMake, bison and the ARM64 glibc cross compiler
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@v5
+      with:
+        distribution: temurin
+        java-version: 21
+
+    - uses: gradle/actions/setup-gradle@v5
+
+    - name: Host tools (X server build, .NET /tmp fix)
+      shell: bash
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq bison flex gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+
+    - name: Android SDK packages
+      shell: bash
+      run: |
+        yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
+        "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+          "platforms;android-36" "platforms;android-34" "build-tools;36.0.0" \
+          "ndk;29.0.14206865" "cmake;3.22.1" > /dev/null
+        echo "sdk.dir=$ANDROID_HOME" > local.properties

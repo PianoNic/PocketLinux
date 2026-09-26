@@ -1,0 +1,29 @@
+name: Build
+
+# Test build on every push and pull request; the APK is attached as a workflow artifact.
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive   # external/termux-x11 and its own submodules
+
+      - uses: ./.github/actions/setup-build
+
+      - name: Build debug APK
+        run: |
+          bash scripts/build-glibc-shim.sh
+          ./gradlew --console=plain :app:assembleDebug
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: pocket-linux-debug-${{ github.sha }}
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error

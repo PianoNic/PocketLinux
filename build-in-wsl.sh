@@ -9,7 +9,7 @@ export ANDROID_HOME="${ANDROID_HOME:-$HOME/android-sdk}"
 
 mkdir -p "$DST"
 rsync -a --delete \
-  --exclude '/build/' --exclude '/*/build/' --exclude '/dist/' --exclude '/.gradle/' --exclude '/local.properties' \
+  --exclude '/build/' --exclude '/*/build/' --exclude '/dist/' --exclude '/.gradle/' --exclude '/local.properties' --exclude '/keystore.properties' \
   --exclude 'external/termux-x11/*/build/' --exclude 'external/termux-x11/lorie/.cxx/' \
   --exclude 'external/termux-x11/shell-loader/stub/build/' \
   "$SRC/" "$DST/"
@@ -20,13 +20,8 @@ sed -i 's/\r$//' gradlew
 find app/src/main/assets -type f -exec sed -i 's/\r$//' {} +
 chmod +x gradlew
 
-# glibc preload library that lets .NET work without /tmp (see glibc-shim/tmp-redirect.c).
-if command -v aarch64-linux-gnu-gcc >/dev/null; then
-  aarch64-linux-gnu-gcc -O2 -Wall -shared -fPIC -o app/src/main/assets/desktop/libtmp-redirect.so \
-    glibc-shim/tmp-redirect.c -ldl
-else
-  echo "WARNING: aarch64-linux-gnu-gcc missing (apt install gcc-aarch64-linux-gnu), building without the .NET /tmp fix" >&2
-fi
+# glibc preload library that lets .NET work without /tmp.
+bash scripts/build-glibc-shim.sh
 
 ./gradlew --console=plain :app:assembleDebug "$@"
 

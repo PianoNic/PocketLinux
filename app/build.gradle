@@ -41,8 +41,8 @@ android {
     defaultConfig {
         minSdkVersion 24   // Termux:X11 needs Android 7+
         targetSdkVersion project.properties.targetSdkVersion.toInteger()
-        versionCode 122
-        versionName "0.122.0"
+        versionCode 123
+        versionName "0.123.0"
 
         if (appVersionName) versionName = appVersionName
         validateVersionName(versionName)
@@ -115,10 +115,10 @@ android {
         variant.outputs.all { output ->
             if (variant.buildType.name == "debug") {
                 def abi = output.getFilter(com.android.build.OutputFile.ABI)
-                outputFileName = new File("linux-desktop_debug_" + (abi ? abi : "arm64-v8a") + ".apk")
+                outputFileName = new File("pocket-linux_debug_" + (abi ? abi : "arm64-v8a") + ".apk")
             } else if (variant.buildType.name == "release") {
                 def abi = output.getFilter(com.android.build.OutputFile.ABI)
-                outputFileName = new File("linux-desktop_release_" + (abi ? abi : "arm64-v8a") + ".apk")
+                outputFileName = new File("pocket-linux_release_" + (abi ? abi : "arm64-v8a") + ".apk")
             }
         }
     }

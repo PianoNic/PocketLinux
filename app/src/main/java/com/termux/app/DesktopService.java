@@ -93,7 +93,7 @@ public class DesktopService extends Service {
 
     private synchronized void startDesktop() {
         mStopping = false;
-        updateNotification("Linux desktop running");
+        updateNotification("Desktop running");
         if (mWatchdog != null && mWatchdog.isAlive()) {
             // Wake the watchdog for an immediate check. Never interrupt it: that would abandon a
             // running check while its script keeps going, and two copies would start two desktops.
@@ -112,7 +112,7 @@ public class DesktopService extends Service {
                 if (now - windowStart > 120_000) { windowStart = now; restartsInWindow = 0; }
                 if (code != 0) restartsInWindow++;
                 boolean crashing = restartsInWindow > 5;
-                updateNotification(crashing ? "Desktop keeps crashing, retrying in 1 min" : "Linux desktop running");
+                updateNotification(crashing ? "Desktop keeps crashing, retrying in 1 min" : "Desktop running");
                 synchronized (mKick) {
                     try { mKick.wait(crashing ? 60_000 : 5_000); } catch (InterruptedException ignored) { }
                 }
@@ -181,7 +181,7 @@ public class DesktopService extends Service {
     private Notification buildNotification(String text) {
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && nm.getNotificationChannel(CHANNEL_ID) == null) {
-            nm.createNotificationChannel(new NotificationChannel(CHANNEL_ID, "Linux", NotificationManager.IMPORTANCE_LOW));
+            nm.createNotificationChannel(new NotificationChannel(CHANNEL_ID, getString(R.string.app_display_name), NotificationManager.IMPORTANCE_LOW));
         }
         int piFlags = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0;
         PendingIntent open = PendingIntent.getActivity(this, 0, new Intent(this, BootActivity.class), piFlags);
@@ -190,7 +190,7 @@ public class DesktopService extends Service {
 
         Notification.Builder b = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
             ? new Notification.Builder(this, CHANNEL_ID) : new Notification.Builder(this);
-        return b.setContentTitle("Linux")
+        return b.setContentTitle(getString(R.string.app_display_name))
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_service_notification)
             .setOngoing(true)

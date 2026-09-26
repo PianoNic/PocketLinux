@@ -88,7 +88,7 @@ public class BootActivity extends Activity {
         if (!new File(PREFIX, "bin/bash").exists()) return; // bootstrap not done yet
 
         if (!READY.exists()) {
-            setState(State.SETUP, "Setting up Linux", "First start: downloading and installing the desktop. This takes 10-20 minutes.");
+            setState(State.SETUP, "Setting up " + getString(com.termux.R.string.app_display_name), "First start: downloading and installing the desktop. This takes 10-20 minutes.");
             if (!DesktopService.sSetupRunning) {
                 SETUP_EXIT.delete();
                 startDesktopService(DesktopService.ACTION_SETUP);
@@ -128,7 +128,7 @@ public class BootActivity extends Activity {
         } else {
             // Back from the desktop: make sure everything is alive (repairs a black screen).
             startDesktopService(DesktopService.ACTION_START);
-            setState(State.RUNNING, "Linux is running", "The desktop keeps running in the background.");
+            setState(State.RUNNING, getString(com.termux.R.string.app_display_name) + " is running", "The desktop keeps running in the background.");
             showButtons("Open desktop", v -> ensureAndOpenDesktop(), "Shut down", v -> shutDown());
         }
     }
@@ -213,7 +213,7 @@ public class BootActivity extends Activity {
             Intent i = new Intent().setComponent(new ComponentName(getPackageName(), X11_ACTIVITY))
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(i);
-            setState(State.RUNNING, "Linux is running", "The desktop keeps running in the background.");
+            setState(State.RUNNING, getString(com.termux.R.string.app_display_name) + " is running", "The desktop keeps running in the background.");
             showButtons("Open desktop", v -> ensureAndOpenDesktop(), "Shut down", v -> shutDown());
         } catch (Exception e) {
             setState(State.NEED_X11, "Display app missing", "Termux:X11 could not be opened.");
@@ -289,7 +289,7 @@ public class BootActivity extends Activity {
         mLogScroll.post(() -> mLogScroll.fullScroll(View.FOCUS_DOWN));
         showButtons("Share", v -> {
             Intent send = new Intent(Intent.ACTION_SEND).setType("text/plain")
-                .putExtra(Intent.EXTRA_SUBJECT, "Linux desktop logs")
+                .putExtra(Intent.EXTRA_SUBJECT, getString(com.termux.R.string.app_display_name) + " logs")
                 .putExtra(Intent.EXTRA_TEXT, text);
             startActivity(Intent.createChooser(send, "Share logs"));
         }, "Back", v -> {
@@ -355,7 +355,7 @@ public class BootActivity extends Activity {
         root.setPadding(pad, dp(64), pad, pad);
 
         TextView logo = mTitle = new TextView(this);
-        logo.setText("Linux");
+        logo.setText(getString(com.termux.R.string.app_display_name));
         logo.setTextColor(Color.WHITE);
         logo.setTextSize(40);
         logo.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL));

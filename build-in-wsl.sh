@@ -25,5 +25,5 @@ chmod +x gradlew
 APK=$(ls -t app/build/outputs/apk/debug/*.apk | head -1)
 VER=$(grep -m1 'versionName "' app/build.gradle | sed 's/.*"\(.*\)".*/\1/')
 mkdir -p "$SRC/../apk"
-cp "$APK" "$SRC/../apk/linux-desktop-v$VER.apk"
-echo "APK: $SRC/../apk/linux-desktop-v$VER.apk ($(du -h "$APK" | cut -f1))"
+cp "$APK" "$SRC/../apk/pocket-linux-v$VER.apk"
+echo "APK: $SRC/../apk/pocket-linux-v$VER.apk ($(du -h "$APK" | cut -f1))"

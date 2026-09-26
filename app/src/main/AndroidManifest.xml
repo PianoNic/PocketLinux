@@ -34,7 +34,7 @@
         android:name=".app.TermuxApplication"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
-        android:label="Linux"
+        android:label="@string/app_display_name"
         android:requestLegacyExternalStorage="true"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="false"
@@ -46,7 +46,7 @@
              separate Termux:X11 app, but no launcher icon of its own and our name/icon. -->
         <activity
             android:name="com.termux.x11.MainActivity"
-            android:label="Linux"
+            android:label="@string/app_display_name"
             android:icon="@mipmap/ic_launcher"
             android:roundIcon="@mipmap/ic_launcher_round"
             tools:replace="android:label,android:icon,android:roundIcon">

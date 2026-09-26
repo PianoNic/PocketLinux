@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The app's name everywhere: launcher, display window, boot screen, notification. -->
+    <string name="app_display_name" translatable="false">Pocket Linux</string>
+</resources>

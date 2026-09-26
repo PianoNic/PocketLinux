@@ -1,0 +1,4 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# List displays (needs Shizuku, with rish exported into $PREFIX/bin)
+command -v rish >/dev/null || { echo "rish not found. Shizuku > Use in terminal apps > export to \$PREFIX/bin"; exit 1; }
+rish -c "dumpsys display" | grep -oE 'mDisplayId=[0-9]+|mBaseDisplayInfo=DisplayInfo\{"[^"]+"' | paste - - | sort -u

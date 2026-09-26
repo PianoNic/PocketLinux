@@ -1,0 +1,21 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Turns off Android's phantom process killer using wireless debugging on this phone itself.
+# Put Settings and this terminal side by side (split screen) so the pairing code stays visible.
+set -e
+command -v adb >/dev/null || pkg install -y android-tools
+cat <<'TXT'
+1. Settings > Developer options > Wireless debugging: turn ON
+2. Tap "Pair device with pairing code" (keep that dialog open, use split screen)
+TXT
+read -rp "Pairing port (the number after the colon in the dialog): " PPORT
+read -rp "Pairing code: " CODE
+adb pair "127.0.0.1:$PPORT" "$CODE"
+read -rp "Port shown on the Wireless debugging screen (IP address & Port): " CPORT
+adb connect "127.0.0.1:$CPORT"
+adb -s "127.0.0.1:$CPORT" shell settings put global settings_enable_monitor_phantom_procs false
+adb -s "127.0.0.1:$CPORT" shell device_config set_sync_disabled_for_tests persistent
+adb -s "127.0.0.1:$CPORT" shell device_config put activity_manager max_phantom_processes 2147483647
+echo
+echo "Result: $(adb -s "127.0.0.1:$CPORT" shell settings get global settings_enable_monitor_phantom_procs)  (false = killer off)"
+adb disconnect >/dev/null 2>&1 || true
+echo "Done. You can turn Wireless debugging off again."

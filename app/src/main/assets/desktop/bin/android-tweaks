@@ -1,0 +1,7 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Stop Android killing heavy child processes (needs Shizuku/rish, run once)
+command -v rish >/dev/null || { echo "rish not found, set up Shizuku first"; exit 1; }
+rish -c "settings put global settings_enable_monitor_phantom_procs false"
+rish -c "device_config set_sync_disabled_for_tests persistent"
+rish -c "device_config put activity_manager max_phantom_processes 2147483647"
+echo "Done."

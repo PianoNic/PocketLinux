@@ -1,0 +1,8 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# glibc .NET wrapper: no bionic LD_PRELOAD, build servers off (their mutexes expect /tmp)
+[ -x "$HOME/.dotnet/dotnet" ] || { echo ".NET not installed. Run: desktop-setup"; exit 1; }
+mkdir -p "$PREFIX/tmp"
+exec env -u LD_PRELOAD \
+  TMPDIR="$PREFIX/tmp" SSL_CERT_FILE="$PREFIX/etc/tls/cert.pem" \
+  DOTNET_CLI_TELEMETRY_OPTOUT=1 DOTNET_CLI_USE_MSBUILD_SERVER=0 MSBUILDDISABLENODEREUSE=1 \
+  DOTNET_ROOT="$HOME/.dotnet" "$HOME/.dotnet/dotnet" "$@"

@@ -1,0 +1,78 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# desktop [--no-launch] [--stop] [DISPLAY_ID]
+# Idempotent: starts only the parts that are not running, so it also repairs a desktop
+# whose XFCE was killed while the X server survived (black screen with only a cursor).
+
+# The X server runs via app_process with --nice-name=termux-x11, so match that name.
+X_PATTERN='termux-x11|CmdEntryPoint'
+x_alive()    { pgrep -f "$X_PATTERN" >/dev/null && [ -S "$TMPDIR/.X11-unix/X0" ]; }
+xfce_alive() { pgrep -x xfce4-session >/dev/null && pgrep -x xfwm4 >/dev/null; }
+
+if [ "$1" = "--stop" ]; then
+  pkill -f xfce4-session
+  for p in xfwm4 xfce4-panel xfdesktop xfsettingsd xfconfd Thunar; do pkill -x "$p" 2>/dev/null; done
+  pkill -f "$X_PATTERN"; pulseaudio --kill 2>/dev/null
+  rm -f "$TMPDIR/.X11-unix/X0" "$TMPDIR/.X0-lock"
+  echo "Desktop stopped"; exit 0
+fi
+LAUNCH=1; [ "$1" = "--no-launch" ] && { LAUNCH=0; shift; }
+
+# Only one instance at a time, otherwise two copies start two desktops that fight each other.
+LOCK="$TMPDIR/desktop.lock.d"
+if ! mkdir "$LOCK" 2>/dev/null; then
+  age=$(( $(date +%s) - $(stat -c %Y "$LOCK" 2>/dev/null || echo 0) ))
+  [ "$age" -gt 60 ] || exit 0          # another start is in progress
+  rm -rf "$LOCK"; mkdir "$LOCK" 2>/dev/null || exit 0
+fi
+trap 'rmdir "$LOCK" 2>/dev/null' EXIT
+
+# The desktop itself renders on the CPU (stable). Apps that need the GPU are started
+# with the `gpu` command, so a broken GPU driver can never take the whole desktop down.
+export XDG_RUNTIME_DIR="$TMPDIR" PULSE_SERVER=127.0.0.1 DISPLAY=:0
+export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
+
+# xfwm4: no OpenGL vsync (it loads the GPU driver otherwise).
+XFWM="$HOME/.config/xfce4/xfconf/xfce-perchannel-xml/xfwm4.xml"
+if ! grep -q 'name="vblank_mode" type="string" value="off"' "$XFWM" 2>/dev/null; then
+  mkdir -p "$(dirname "$XFWM")"
+  cat > "$XFWM" <<'XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<channel name="xfwm4" version="1.0">
+  <property name="general" type="empty">
+    <property name="vblank_mode" type="string" value="off"/>
+    <property name="use_compositing" type="bool" value="false"/>
+  </property>
+</channel>
+XML
+fi
+
+pgrep -x pulseaudio >/dev/null || pulseaudio --start --exit-idle-time=-1 \
+  --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" 2>/dev/null
+
+RESTARTED=0
+if ! x_alive; then
+  RESTARTED=1
+  echo "$(date '+%F %T') starting X server"
+  pkill -f "$X_PATTERN" 2>/dev/null
+  rm -f "$TMPDIR/.X11-unix/X0" "$TMPDIR/.X0-lock"
+  termux-x11 :0 -ac >>"$TMPDIR/termux-x11.log" 2>&1 &
+  for i in $(seq 1 30); do [ -S "$TMPDIR/.X11-unix/X0" ] && break; sleep 0.5; done
+fi
+
+if ! xfce_alive; then
+  RESTARTED=1
+  echo "$(date '+%F %T') starting XFCE"
+  # Remove half-dead leftovers so nothing runs twice.
+  pkill -f xfce4-session 2>/dev/null
+  for p in xfwm4 xfce4-panel xfdesktop xfsettingsd; do pkill -x "$p" 2>/dev/null; done
+  sleep 0.5
+  nohup dbus-launch --exit-with-session startxfce4 >>"$TMPDIR/xfce.log" 2>&1 &
+fi
+
+# Exit 3 tells the watchdog something had to be restarted (for crash-loop detection).
+[ "$LAUNCH" = "1" ] || { [ "$RESTARTED" = 1 ] && exit 3; exit 0; }
+if [ -n "$1" ] && command -v rish >/dev/null; then
+  rish -c "am start --display $1 -n com.termux.x11/com.termux.x11.MainActivity" >/dev/null
+else
+  am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1
+fi

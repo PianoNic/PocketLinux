@@ -375,12 +375,40 @@ final class TermuxInstaller {
         return FileUtils.createDirectoryFile(directory.getAbsolutePath());
     }
 
-    public static byte[] loadZipBytes() {
-        // Only load the shared library when necessary to save memory usage.
-        System.loadLibrary("termux-bootstrap");
-        return getZip();
-    }
+    // The base system is downloaded on first start instead of being embedded in the APK.
+    // Pinned to an exact release and verified by SHA-256.
+    private static final String BOOTSTRAP_URL =
+        "https://github.com/termux/termux-packages/releases/download/bootstrap-2026.02.12-r1%2Bapt.android-7/bootstrap-aarch64.zip";
+    private static final String BOOTSTRAP_SHA256 = "ea2aeba8819e517db711f8c32369e89e7c52cee73e07930ff91185e1ab93f4f3";
 
-    public static native byte[] getZip();
+    public static byte[] loadZipBytes() throws Exception {
+        Exception last = null;
+        for (int attempt = 0; attempt < 3; attempt++) {
+            try {
+                java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(BOOTSTRAP_URL).openConnection();
+                c.setInstanceFollowRedirects(true);
+                c.setConnectTimeout(20000);
+                c.setReadTimeout(60000);
+                java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+                java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream(32 * 1024 * 1024);
+                try (java.io.InputStream in = c.getInputStream()) {
+                    byte[] buf = new byte[65536];
+                    int n;
+                    while ((n = in.read(buf)) > 0) { out.write(buf, 0, n); md.update(buf, 0, n); }
+                }
+                StringBuilder hex = new StringBuilder();
+                for (byte b : md.digest()) hex.append(String.format("%02x", b));
+                if (!BOOTSTRAP_SHA256.equals(hex.toString()))
+                    throw new SecurityException("Base system download is corrupt (checksum mismatch)");
+                return out.toByteArray();
+            } catch (SecurityException e) {
+                throw e;
+            } catch (Exception e) {
+                last = e;
+                Thread.sleep(2000);
+            }
+        }
+        throw new java.io.IOException("Could not download the base system. Check your internet connection.", last);
+    }
 
 }

@@ -1,0 +1,8 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# gpu <program> [args]: run one program with GPU acceleration (Zink on Turnip/Adreno).
+# Test: gpu glxinfo -B   |   gpu glxgears
+[ $# -eq 0 ] && { echo "usage: gpu <program> [args]"; exit 1; }
+unset LIBGL_ALWAYS_SOFTWARE
+export MESA_LOADER_DRIVER_OVERRIDE=zink GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy
+export TU_DEBUG=noconform,sysmem
+exec "$@"

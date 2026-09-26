@@ -39,17 +39,18 @@ android {
     }
 
     defaultConfig {
+        applicationId "ch.pocketl"   // must stay 10 characters, like com.termux (see Relocator)
         minSdkVersion 24   // Termux:X11 needs Android 7+
         targetSdkVersion project.properties.targetSdkVersion.toInteger()
-        versionCode 123
-        versionName "0.123.0"
+        versionCode 124
+        versionName "0.124.0"
 
         if (appVersionName) versionName = appVersionName
         validateVersionName(versionName)
 
         buildConfigField "String", "TERMUX_PACKAGE_VARIANT", "\"" + project.ext.packageVariant + "\"" // Used by TermuxApplication class
 
-        manifestPlaceholders.TERMUX_PACKAGE_NAME = "com.termux"
+        manifestPlaceholders.TERMUX_PACKAGE_NAME = "ch.pocketl"
         manifestPlaceholders.TERMUX_APP_NAME = "Termux"
         manifestPlaceholders.TERMUX_API_APP_NAME = "Termux:API"
         manifestPlaceholders.TERMUX_BOOT_APP_NAME = "Termux:Boot"

@@ -157,7 +157,7 @@ pgrep -x pulseaudio >/dev/null || pulseaudio --start --exit-idle-time=-1 \
 
 # The service passes these; when run by hand, read what the service last wrote.
 [ -n "${DESKTOP_APK:-}" ] || DESKTOP_APK=$(cat "$PREFIX/var/desktop-apk" 2>/dev/null)
-[ -n "${DESKTOP_PACKAGE:-}" ] || DESKTOP_PACKAGE=com.termux
+[ -n "${DESKTOP_PACKAGE:-}" ] || DESKTOP_PACKAGE=$(basename "$(dirname "$(dirname "$PREFIX")")")   # /data/data/<app id>/files/usr
 
 RESTARTED=0
 if ! x_alive; then
@@ -169,8 +169,10 @@ if ! x_alive; then
     # X server built into this app: run its CmdEntryPoint from our own APK (same as the
     # termux-x11 command does with the separate Termux:X11 app).
     ( unset LD_LIBRARY_PATH LD_PRELOAD
+      # Keyboard layouts; the X server's own fallback path assumes the com.termux app ID.
+      export XKB_CONFIG_ROOT="$PREFIX/share/X11/xkb"
       CLASSPATH="$DESKTOP_APK" exec /system/bin/app_process -Xnoimage-dex2oat / \
-        --nice-name="termux-x11 ${DESKTOP_PACKAGE:-com.termux} :0" \
+        --nice-name="termux-x11 $DESKTOP_PACKAGE :0" \
         com.termux.x11.CmdEntryPoint :0 -ac ) >>"$TMPDIR/termux-x11.log" 2>&1 &
   else
     termux-x11 :0 -ac >>"$TMPDIR/termux-x11.log" 2>&1 &   # fallback: separate app
@@ -209,7 +211,7 @@ fi
 
 # Exit 3 tells the watchdog something had to be restarted (for crash-loop detection).
 [ "$LAUNCH" = "1" ] || { [ "$RESTARTED" = 1 ] && exit 3; exit 0; }
-if [ -f "${DESKTOP_APK:-}" ]; then X11_ACTIVITY="${DESKTOP_PACKAGE:-com.termux}/com.termux.x11.MainActivity"
+if [ -f "${DESKTOP_APK:-}" ]; then X11_ACTIVITY="$DESKTOP_PACKAGE/com.termux.x11.MainActivity"
 else X11_ACTIVITY=com.termux.x11/com.termux.x11.MainActivity; fi
 if [ -n "$1" ] && command -v rish >/dev/null; then
   rish -c "am start --display $1 -n $X11_ACTIVITY" >/dev/null

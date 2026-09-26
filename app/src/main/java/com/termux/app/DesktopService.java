@@ -187,6 +187,8 @@ public class DesktopService extends Service {
         PendingIntent open = PendingIntent.getActivity(this, 0, new Intent(this, BootActivity.class), piFlags);
         PendingIntent stop = PendingIntent.getService(this, 1,
             new Intent(this, DesktopService.class).setAction(ACTION_STOP), piFlags);
+        PendingIntent settings = PendingIntent.getActivity(this, 2,
+            new Intent(this, com.termux.x11.LoriePreferences.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), piFlags);
 
         Notification.Builder b = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
             ? new Notification.Builder(this, CHANNEL_ID) : new Notification.Builder(this);
@@ -194,12 +196,20 @@ public class DesktopService extends Service {
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_service_notification)
             .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setShowWhen(false)
             .setContentIntent(open)
+            .addAction(0, "Display settings", settings)
             .addAction(0, "Shut down", stop)
             .build();
     }
 
-    private void updateNotification(String text) {
+    private String mLastNotificationText;
+
+    /** Only re-posts when the text changes, so the notification shade does not keep jumping. */
+    private synchronized void updateNotification(String text) {
+        if (text.equals(mLastNotificationText)) return;
+        mLastNotificationText = text;
         ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).notify(NOTIFICATION_ID, buildNotification(text));
     }
 

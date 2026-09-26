@@ -24,6 +24,9 @@ public class TermuxApplication extends com.termux.x11.LorieApp {
     public void onCreate() {
         super.onCreate();
 
+        // Built-in display: no extra-keys bar, resolution follows the window, auto scale.
+        PocketDisplay.install(this);
+
         Context context = getApplicationContext();
 
         // Set crash handler for the app
@@ -71,6 +74,16 @@ public class TermuxApplication extends com.termux.x11.LorieApp {
         if (isTermuxFilesDirectoryAccessible) {
             TermuxShellEnvironment.writeEnvironmentToFile(this);
         }
+    }
+
+    /**
+     * Termux:X11 posts a high-priority notification every time the display comes to the front,
+     * which pushes the user's other notifications into the collapsed group. Pocket Linux has its
+     * own quiet notification (DesktopService), so the display's one is not shown at all.
+     */
+    @Override
+    public void onActivityResumed(com.termux.x11.MainActivity activity) {
+        if (notificationManager != null) notificationManager.cancel(NOTIFICATION_ID);
     }
 
     public static void setLogConfig(Context context) {

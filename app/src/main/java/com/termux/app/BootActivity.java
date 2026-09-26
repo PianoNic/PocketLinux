@@ -263,17 +263,29 @@ public class BootActivity extends Activity {
             File libexec = new File(PREFIX, "libexec/desktop");
             libexec.mkdirs();
             copyAsset("desktop/firstrun.sh", new File(libexec, "firstrun.sh"));
+            // apt hook that moves every package to this app's data directory (see Relocator).
+            copyAsset("desktop/relocate-debs", new File(libexec, "relocate-debs"));
+            File aptConf = new File(PREFIX, "etc/apt/apt.conf.d");
+            aptConf.mkdirs();
+            copyAsset("desktop/apt-relocate.conf", new File(aptConf, "99-pocket-relocate.conf"));
             new File(HOME, ".termux").mkdirs();
             new File(PREFIX, "tmp").mkdirs();
         } catch (Exception ignored) {
         }
     }
 
+    /** Copies a bundled file, moving its Termux paths (shebangs etc.) to this app's ID. */
     private void copyAsset(String asset, File target) throws Exception {
-        try (InputStream in = getAssets().open(asset); FileOutputStream out = new FileOutputStream(target)) {
+        java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+        try (InputStream in = getAssets().open(asset)) {
             byte[] buf = new byte[8192];
             int n;
-            while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+            while ((n = in.read(buf)) > 0) bytes.write(buf, 0, n);
+        }
+        byte[] data = bytes.toByteArray();
+        Relocator.relocate(data, data.length);
+        try (FileOutputStream out = new FileOutputStream(target)) {
+            out.write(data);
         }
         //noinspection ResultOfMethodCallIgnored
         target.setExecutable(true, true);

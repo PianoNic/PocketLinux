@@ -1,0 +1,67 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# apt hook (DPkg::Pre-Install-Pkgs): moves Termux packages to this app's data directory
+# before dpkg installs them. Reads the .deb paths apt is about to install from stdin.
+#
+# Termux packages contain "./data/data/com.termux/files/usr/..." and have that path
+# compiled into their files. This app's ID has the same length, so the path is swapped
+# byte for byte (same rules as Relocator.java), then the package is rebuilt in place.
+# (This file's own paths were already moved when the app copied it here.)
+set -u
+OLD=com.termux
+NEW=$(basename "$(dirname "$(dirname "$PREFIX")")")   # /data/data/<NEW>/files/usr
+[ "$NEW" = "$OLD" ] && { cat >/dev/null; exit 0; }
+[ ${#NEW} -eq ${#OLD} ] || { echo "relocate-debs: app ID length mismatch" >&2; exit 1; }
+export LC_ALL=C
+
+relocate_deb() {
+  local deb="$1" t
+  t=$(mktemp -d "$TMPDIR/relocate.XXXXXX") || return 1
+  dpkg-deb -R "$deb" "$t/p" || { rm -rf "$t"; return 1; }
+  chmod 0755 "$t/p/DEBIAN"
+
+  # Already relocated (for example a cached .deb that apt installs a second time)?
+  if [ ! -d "$t/p/data/data/$OLD" ] && ! grep -rqaF "$OLD" "$t/p/DEBIAN" 2>/dev/null; then
+    rm -rf "$t"; return 0
+  fi
+  if [ -d "$t/p/data/data/$OLD" ]; then
+    mkdir -p "$t/p/data/data/$NEW"
+    cp -a "$t/p/data/data/$OLD/." "$t/p/data/data/$NEW/"
+    rm -rf "$t/p/data/data/$OLD"
+  fi
+
+  # File contents (programs, libraries, scripts, configs, maintainer scripts).
+  grep -rlaZ -e "/data/data/$OLD" -e "$OLD/" -e "$OLD.files" "$t/p" 2>/dev/null |
+    while IFS= read -r -d '' f; do
+      [ -L "$f" ] && continue
+      sed -i -e "s|/data/data/com\.termux|/data/data/$NEW|g" \
+             -e "s|com\.termux/|$NEW/|g" -e "s|com\.termux\.files|$NEW.files|g" "$f"
+    done
+
+  # Symlinks pointing at absolute Termux paths.
+  find "$t/p" -type l -print0 | while IFS= read -r -d '' l; do
+    tgt=$(readlink "$l")
+    case "$tgt" in *"$OLD"*)
+      ln -sfn "$(printf '%s' "$tgt" | sed -e "s|/data/data/com\.termux|/data/data/$NEW|g" -e "s|com\.termux/|$NEW/|g")" "$l" ;;
+    esac
+  done
+
+  # Checksums of the changed files.
+  if [ -f "$t/p/DEBIAN/md5sums" ]; then
+    ( cd "$t/p" && find . -path ./DEBIAN -prune -o -type f -print0 | sed -z 's|^\./||' |
+        xargs -0 -r md5sum ) > "$t/md5sums" && mv "$t/md5sums" "$t/p/DEBIAN/md5sums"
+  fi
+
+  # Fast compression: the package is installed right away and not kept around.
+  dpkg-deb --root-owner-group -Zgzip -z1 -b "$t/p" "$t/new.deb" >/dev/null &&
+    mv -f "$t/new.deb" "$deb"
+  local rc=$?
+  rm -rf "$t"
+  return $rc
+}
+
+while IFS= read -r deb; do
+  case "$deb" in *.deb) ;; *) continue ;; esac
+  [ -f "$deb" ] || continue
+  relocate_deb "$deb" || { echo "relocate-debs: failed on $deb" >&2; exit 1; }
+done
+exit 0

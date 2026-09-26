@@ -167,7 +167,7 @@ final class TermuxInstaller {
                                     String[] parts = line.split("←");
                                     if (parts.length != 2)
                                         throw new RuntimeException("Malformed symlink line: " + line);
-                                    String oldPath = parts[0];
+                                    String oldPath = Relocator.relocate(parts[0]); // symlink target
                                     String newPath = TERMUX_STAGING_PREFIX_DIR_PATH + "/" + parts[1];
                                     symlinks.add(Pair.create(oldPath, newPath));
 
@@ -189,10 +189,17 @@ final class TermuxInstaller {
                                 }
 
                                 if (!isDirectory) {
+                                    // Read the whole entry so the Termux paths inside can be moved
+                                    // to this app's data directory (see Relocator).
+                                    java.io.ByteArrayOutputStream entry = new java.io.ByteArrayOutputStream(
+                                        (int) Math.max(zipEntry.getSize(), 8192));
+                                    int readBytes;
+                                    while ((readBytes = zipInput.read(buffer)) != -1)
+                                        entry.write(buffer, 0, readBytes);
+                                    byte[] data = entry.toByteArray();
+                                    Relocator.relocate(data, data.length);
                                     try (FileOutputStream outStream = new FileOutputStream(targetFile)) {
-                                        int readBytes;
-                                        while ((readBytes = zipInput.read(buffer)) != -1)
-                                            outStream.write(buffer, 0, readBytes);
+                                        outStream.write(data);
                                     }
                                     if (zipEntryName.startsWith("bin/") || zipEntryName.startsWith("libexec") ||
                                         zipEntryName.startsWith("lib/apt/apt-helper") || zipEntryName.startsWith("lib/apt/methods")) {

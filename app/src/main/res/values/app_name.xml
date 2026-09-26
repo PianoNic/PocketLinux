@@ -2,4 +2,8 @@
 <resources>
     <!-- The app's name everywhere: launcher, display window, boot screen, notification. -->
     <string name="app_display_name" translatable="false">Pocket Linux</string>
+
+    <!-- Overrides for texts from the bundled Termux / Termux:X11 libraries, so nothing
+         user-visible says "Termux". (App resources win over library resources.) -->
+    <string name="lorie_app_name" translatable="false">Pocket Linux Display</string>
 </resources>

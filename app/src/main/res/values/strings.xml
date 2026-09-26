@@ -2,7 +2,7 @@
 
 <!DOCTYPE resources [
     <!ENTITY TERMUX_PACKAGE_NAME "com.termux">
-    <!ENTITY TERMUX_APP_NAME "Termux">
+    <!ENTITY TERMUX_APP_NAME "Pocket Linux">
     <!ENTITY TERMUX_API_APP_NAME "Termux:API">
     <!ENTITY TERMUX_BOOT_APP_NAME "Termux:Boot">
     <!ENTITY TERMUX_FLOAT_APP_NAME "Termux:Float">
@@ -26,17 +26,17 @@
 
 
     <!-- Termux Bootstrap Packages Installation -->
-    <string name="bootstrap_installer_body">Installing bootstrap packages…</string>
-    <string name="bootstrap_error_title">Unable to install bootstrap</string>
-    <string name="bootstrap_error_body">&TERMUX_APP_NAME; was unable to install the bootstrap packages.</string>
+    <string name="bootstrap_installer_body">Installing the base system…</string>
+    <string name="bootstrap_error_title">Unable to install the base system</string>
+    <string name="bootstrap_error_body">Pocket Linux was unable to install the base system.</string>
     <string name="bootstrap_error_abort">Abort</string>
     <string name="bootstrap_error_try_again">Try again</string>
-    <string name="bootstrap_error_not_primary_user_message">&TERMUX_APP_NAME; can only be run as the primary user.
-        \nBootstrap binaries compiled for &TERMUX_APP_NAME; have hardcoded $PREFIX path and cannot be installed
+    <string name="bootstrap_error_not_primary_user_message">Pocket Linux can only be run as the primary user.
+        \nThe base system has a hardcoded $PREFIX path and cannot be installed
         under any path other than:\n%1$s.</string>
-    <string name="bootstrap_error_installed_on_portable_sd">&TERMUX_APP_NAME; cannot be installed on
+    <string name="bootstrap_error_installed_on_portable_sd">Pocket Linux cannot be installed on
         portable/external/removable sd card on your device.
-        \nBootstrap binaries compiled for &TERMUX_APP_NAME; have hardcoded $PREFIX path and cannot be installed
+        \nThe base system has a hardcoded $PREFIX path and cannot be installed
         under any path other than:\n%1$s.</string>
 
 

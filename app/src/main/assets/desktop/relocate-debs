@@ -58,7 +58,9 @@ relocate_deb() {
   fi
 
   # Fast compression: the package is installed right away and not kept around.
-  dpkg-deb --root-owner-group -Zgzip -z1 -b "$t/p" "$t/new.deb" >/dev/null &&
+  # --nocheck: some upstream packages have quirks dpkg accepts on install but dpkg-deb
+  # rejects on build (e.g. glibc lists the conffile "gai.conf," with a trailing comma).
+  dpkg-deb --root-owner-group --nocheck -Zgzip -z1 -b "$t/p" "$t/new.deb" >/dev/null &&
     mv -f "$t/new.deb" "$deb"
   local rc=$?
   rm -rf "$t"

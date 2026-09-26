@@ -103,20 +103,8 @@ public class BootActivity extends Activity {
             return;
         }
 
-        if (phantomKillerActive() && !getPrefs().getBoolean("killer_warning_dismissed", false)) {
-            setState(State.KILLER_WARNING, "Android will kill the desktop",
-                "Android stops the desktop's processes while you use it (black screen, disconnects).\n\n"
-                + "Fix it once:\n"
-                + "1. Settings > About phone > Software information > tap Build number 7 times\n"
-                + "2. Settings > Developer options > turn ON \"Disable child process restrictions\"\n"
-                + "3. Come back here");
-            showButtons("Open Developer options", v -> openDeveloperOptions(),
-                "Continue anyway", v -> {
-                    getPrefs().edit().putBoolean("killer_warning_dismissed", true).apply();
-                    next();
-                });
-            return;
-        }
+        // No phantom-killer gate: the slim desktop stays under Android's process limit, and the
+        // watchdog restarts anything that still gets killed. The Logs screen shows the status.
 
         requestBatteryExemptionOnce();
 

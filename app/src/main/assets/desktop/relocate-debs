@@ -33,9 +33,15 @@ relocate_deb() {
   grep -rlaZ -e "/data/data/$OLD" -e "$OLD/" -e "$OLD.files" "$t/p" 2>/dev/null |
     while IFS= read -r -d '' f; do
       [ -L "$f" ] && continue
+      mode=$(stat -c %a "$f")          # sed -i writes a new file and loses the mode
       sed -i -e "s|/data/data/com\.termux|/data/data/$NEW|g" \
              -e "s|com\.termux/|$NEW/|g" -e "s|com\.termux\.files|$NEW.files|g" "$f"
+      chmod "$mode" "$f"
     done
+  # dpkg-deb insists on 0555..0775 for maintainer scripts.
+  for s in preinst postinst prerm postrm config; do
+    [ -f "$t/p/DEBIAN/$s" ] && chmod 0755 "$t/p/DEBIAN/$s"
+  done
 
   # Symlinks pointing at absolute Termux paths.
   find "$t/p" -type l -print0 | while IFS= read -r -d '' l; do

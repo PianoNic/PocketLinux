@@ -42,8 +42,8 @@ android {
         applicationId "ch.pocketl"   // must stay 10 characters, like com.termux (see Relocator)
         minSdkVersion 24   // Termux:X11 needs Android 7+
         targetSdkVersion project.properties.targetSdkVersion.toInteger()
-        versionCode 124
-        versionName "0.124.0"
+        versionCode 125
+        versionName "0.125.0"
 
         if (appVersionName) versionName = appVersionName
         validateVersionName(versionName)

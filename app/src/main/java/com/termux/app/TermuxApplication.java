@@ -1,6 +1,5 @@
 package com.termux.app;
 
-import android.app.Application;
 import android.content.Context;
 
 import com.termux.BuildConfig;
@@ -17,7 +16,8 @@ import com.termux.shared.termux.shell.am.TermuxAmSocketServer;
 import com.termux.shared.termux.shell.TermuxShellManager;
 import com.termux.shared.termux.theme.TermuxThemeUtils;
 
-public class TermuxApplication extends Application {
+/** Extends Termux:X11's application class, because the built-in display relies on it. */
+public class TermuxApplication extends com.termux.x11.LorieApp {
 
     private static final String LOG_TAG = "TermuxApplication";
 

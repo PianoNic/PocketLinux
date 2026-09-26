@@ -48,6 +48,11 @@ public class DesktopService extends Service {
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
         mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "linux:desktop");
         mWakeLock.acquire();
+        // Tell scripts started by hand (XFCE terminal) where the built-in X server lives.
+        try (java.io.FileWriter w = new java.io.FileWriter(
+                new File(TermuxConstants.TERMUX_PREFIX_DIR_PATH, "var/desktop-apk"))) {
+            w.write(getApplicationInfo().sourceDir);
+        } catch (Exception ignored) { }
     }
 
     @Override
@@ -149,6 +154,9 @@ public class DesktopService extends Service {
             env.clear();
             HashMap<String, String> termuxEnv = new TermuxShellEnvironment().getEnvironment(this, false);
             env.putAll(termuxEnv);
+            // The X server (Termux:X11's CmdEntryPoint) is part of this APK.
+            env.put("DESKTOP_APK", getApplicationInfo().sourceDir);
+            env.put("DESKTOP_PACKAGE", getPackageName());
             pb.directory(new File(TermuxConstants.TERMUX_HOME_DIR_PATH));
             File log = new File(TermuxConstants.TERMUX_TMP_PREFIX_DIR_PATH, "desktop-service.log");
             log.getParentFile().mkdirs();

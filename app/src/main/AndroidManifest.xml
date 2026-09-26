@@ -39,7 +39,19 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="false"
         android:theme="@android:style/Theme.Material.NoActionBar"
+        tools:replace="android:name,android:supportsRtl"
         tools:targetApi="m">
+
+        <!-- Termux:X11 display (from :lorie), running inside this app. Same window as the
+             separate Termux:X11 app, but no launcher icon of its own and our name/icon. -->
+        <activity
+            android:name="com.termux.x11.MainActivity"
+            android:label="Linux"
+            android:icon="@mipmap/ic_launcher"
+            android:roundIcon="@mipmap/ic_launcher_round"
+            tools:replace="android:label,android:icon,android:roundIcon">
+            <intent-filter tools:node="removeAll" />
+        </activity>
 
         <!-- The only screen: installs, sets up and boots the Linux desktop. -->
         <activity

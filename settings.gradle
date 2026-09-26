@@ -1,1 +1,9 @@
 include ':app', ':termux-shared', ':terminal-emulator', ':terminal-view'
+
+// Termux:X11 display, built into the app (git submodule external/termux-x11).
+// :lorie is the X server + display library; it only needs the stub classes at compile time.
+include ':lorie'
+project(':lorie').projectDir = file('external/termux-x11/lorie')
+include ':shell-loader:stub'
+project(':shell-loader').projectDir = file('external/shell-loader-root')
+project(':shell-loader:stub').projectDir = file('external/termux-x11/shell-loader/stub')

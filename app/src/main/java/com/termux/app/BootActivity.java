@@ -36,7 +36,6 @@ import java.nio.charset.StandardCharsets;
  */
 public class BootActivity extends Activity {
 
-    private static final String X11_PACKAGE = "com.termux.x11";
     private static final String X11_ACTIVITY = "com.termux.x11.MainActivity";
 
     private static final String HOME = TermuxConstants.TERMUX_HOME_DIR_PATH;
@@ -211,7 +210,7 @@ public class BootActivity extends Activity {
 
     private void openDesktop() {
         try {
-            Intent i = new Intent().setComponent(new ComponentName(X11_PACKAGE, X11_ACTIVITY))
+            Intent i = new Intent().setComponent(new ComponentName(getPackageName(), X11_ACTIVITY))
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(i);
             setState(State.RUNNING, "Linux is running", "The desktop keeps running in the background.");
@@ -244,13 +243,9 @@ public class BootActivity extends Activity {
         startActivity(i);
     }
 
+    /** The display is built into this app now (Termux:X11's lorie library). */
     private boolean isX11Installed() {
-        try {
-            getPackageManager().getPackageInfo(X11_PACKAGE, 0);
-            return true;
-        } catch (PackageManager.NameNotFoundException e) {
-            return false;
-        }
+        return true;
     }
 
     private void startDesktopService(String action) {

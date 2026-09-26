@@ -35,13 +35,14 @@ android {
         implementation 'com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava'
 
         implementation project(":termux-shared")
+        implementation project(":lorie")   // Termux:X11 display + X server, built in
     }
 
     defaultConfig {
-        minSdkVersion project.properties.minSdkVersion.toInteger()
+        minSdkVersion 24   // Termux:X11 needs Android 7+
         targetSdkVersion project.properties.targetSdkVersion.toInteger()
-        versionCode 121
-        versionName "0.121.0"
+        versionCode 122
+        versionName "0.122.0"
 
         if (appVersionName) versionName = appVersionName
         validateVersionName(versionName)
@@ -106,7 +107,7 @@ android {
 
     packagingOptions {
         jniLibs {
-            useLegacyPackaging true
+            useLegacyPackaging false   // X server loads libXlorie.so straight from the APK
         }
     }
 

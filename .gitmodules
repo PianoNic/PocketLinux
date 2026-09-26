@@ -1,0 +1,3 @@
+[submodule "external/termux-x11"]
+	path = external/termux-x11
+	url = https://github.com/termux/termux-x11.git

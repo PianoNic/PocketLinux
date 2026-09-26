@@ -1,7 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # Termux Desktop: one-time automatic setup, runs on first app start.
 # Installs XFCE (native, no proot), GPU (Turnip + Zink), dev tools, .NET via glibc-runner,
-# and the Termux:X11 display app. Re-run manually any time with: desktop-setup
+# and the Breeze theme. Re-run manually any time with: desktop-setup
 
 LOG="$HOME/.termux/desktop-setup.log"
 MARKER="$HOME/.termux/desktop-ready"
@@ -26,9 +26,10 @@ yes | pkg upgrade $APT_OPTS
 pkgi x11-repo tur-repo glibc-repo
 yes | pkg update $APT_OPTS
 
-step "Desktop: XFCE + Termux:X11 + audio"
-pkgi termux-x11-nightly xfce4 xfce4-terminal pulseaudio dbus firefox || warn "some desktop packages failed"
-pkgi xfce4-whiskermenu-plugin fonts-noto 2>/dev/null || true
+step "Desktop: XFCE + audio (the display is built into the app)"
+pkgi xkeyboard-config xfce4 xfce4-terminal pulseaudio dbus firefox || warn "some desktop packages failed"
+step "Plasma-like look: Breeze theme, Whisker Menu, Docklike taskbar"
+pkgi breeze-gtk kf6-breeze-icons xfce4-whiskermenu-plugin xfce4-docklike-plugin || warn "theme packages failed"
 
 step "GPU acceleration: Turnip (Adreno Vulkan) + Zink (OpenGL on Vulkan)"
 pkgi mesa-vulkan-icd-freedreno vulkan-tools mesa-demos 2>/dev/null || warn "GPU packages failed, desktop falls back to CPU"
@@ -47,17 +48,7 @@ if pkgi glibc glibc-runner; then
   grun -c "$HOME/.dotnet/dotnet" || warn ".NET install failed, run desktop-setup later to retry"
 fi
 
-step "Downloading Termux:X11 display app"
-if ! pm list packages 2>/dev/null | grep -q '^package:com.termux.x11$'; then
-  ok=0
-  for f in app-universal-debug.apk app-arm64-v8a-debug.apk; do
-    curl -fL --retry 3 -o "$PREFIX/tmp/termux-x11.apk" \
-      "https://github.com/termux/termux-x11/releases/download/nightly/$f" && { ok=1; break; }
-  done
-  [ "$ok" = 1 ] || warn "Download failed. Get it manually: github.com/termux/termux-x11/releases (nightly)"
-fi
-
-if ! command -v startxfce4 >/dev/null || ! command -v termux-x11 >/dev/null; then
+if ! command -v startxfce4 >/dev/null; then
   warn "Desktop packages missing, setup incomplete. Check your connection and reopen the app."
   exit 1
 fi

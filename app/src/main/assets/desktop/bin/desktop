@@ -8,9 +8,33 @@ X_PATTERN='termux-x11|CmdEntryPoint'
 x_alive()    { pgrep -f "$X_PATTERN" >/dev/null && [ -S "$TMPDIR/.X11-unix/X0" ]; }
 xfce_alive() { pgrep -x xfce4-session >/dev/null && pgrep -x xfwm4 >/dev/null; }
 
+# Helpers a desktop session leaves behind (they get re-parented to init and would pile up
+# with every restart, eating into Android's process limit).
+LEFTOVERS='ssh-agent gpg-agent tumblerd termux-api termux-battery-status upowerd gvfsd
+  gvfsd-metadata gvfsd-trash dconf-service xfconfd at-spi-bus-launcher at-spi2-registryd
+  xfce4-notifyd xfce4-power-manager Thunar'
+# pkill does not see processes that were re-parented to init, so scan /proc directly.
+kill_named() {
+  local d comm
+  for d in /proc/[0-9]*; do
+    [ -O "$d" ] || continue
+    read -r comm < "$d/comm" 2>/dev/null || continue
+    for n in "$@"; do
+      # comm is cut to 15 characters by the kernel
+      [ "$comm" = "${n:0:15}" ] && { kill "${d#/proc/}" 2>/dev/null; break; }
+    done
+  done
+}
+kill_leftovers() {
+  kill_named $LEFTOVERS
+  # The old session bus (a new one comes with the new session).
+  pkill -f 'dbus-daemon --syslog --fork' 2>/dev/null; kill_named dbus-daemon
+}
+
 if [ "$1" = "--stop" ]; then
   pkill -f xfce4-session
-  for p in xfwm4 xfce4-panel xfdesktop xfsettingsd xfconfd Thunar; do pkill -x "$p" 2>/dev/null; done
+  for p in xfwm4 xfce4-panel xfdesktop xfsettingsd wrapper-2.0; do pkill -x "$p" 2>/dev/null; done
+  kill_leftovers
   pkill -f "$X_PATTERN"; pulseaudio --kill 2>/dev/null
   rm -f "$TMPDIR/.X11-unix/X0" "$TMPDIR/.X0-lock"
   echo "Desktop stopped"; exit 0
@@ -46,8 +70,94 @@ if ! grep -q 'name="vblank_mode" type="string" value="off"' "$XFWM" 2>/dev/null;
 XML
 fi
 
+# ---- Stay under Android's phantom process limit ---------------------------------------
+# Android 12+ kills background child processes once an app has more than 32 of them
+# (unless "Disable child process restrictions" is on). Stock XFCE + Firefox is ~35.
+# Slim mode keeps the desktop at ~12 and Firefox at ~6 processes.
+export NO_AT_BRIDGE=1 GIO_USE_VFS=local GVFS_DISABLE_FUSE=1 GSETTINGS_BACKEND=keyfile
+
+slim_config() {
+  local AUTO="$HOME/.config/autostart"
+  mkdir -p "$AUTO"
+  # Services the desktop does not need on a phone.
+  for d in xfce4-power-manager xfce4-notifyd at-spi-dbus-bus gnome-keyring-pkcs11 \
+           gnome-keyring-secrets gnome-keyring-ssh xfce4-screensaver light-locker \
+           tumblerd polkit-gnome-authentication-agent-1 xiccd; do
+    printf '[Desktop Entry]\nType=Application\nName=%s\nHidden=true\n' "$d" > "$AUTO/$d.desktop"
+  done
+
+  # Session: no agents, no saved sessions, and no Thunar daemon in the startup set.
+  local SESS="$HOME/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-session.xml"
+  mkdir -p "$(dirname "$SESS")"
+  cat > "$SESS" <<'XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<channel name="xfce4-session" version="1.0">
+  <property name="general" type="empty">
+    <property name="SaveOnExit" type="bool" value="false"/>
+    <property name="AutoSave" type="bool" value="false"/>
+    <property name="PromptOnLogout" type="bool" value="false"/>
+  </property>
+  <property name="startup" type="empty">
+    <property name="ssh-agent" type="empty"><property name="enabled" type="bool" value="false"/></property>
+    <property name="gpg-agent" type="empty"><property name="enabled" type="bool" value="false"/></property>
+  </property>
+  <property name="compat" type="empty">
+    <property name="LaunchGNOME" type="bool" value="false"/>
+  </property>
+  <property name="sessions" type="empty">
+    <property name="Failsafe" type="empty">
+      <property name="IsFailsafe" type="bool" value="true"/>
+      <property name="Count" type="int" value="4"/>
+      <property name="Client0_Command" type="array"><value type="string" value="xfwm4"/></property>
+      <property name="Client0_Priority" type="int" value="15"/>
+      <property name="Client1_Command" type="array"><value type="string" value="xfsettingsd"/></property>
+      <property name="Client1_Priority" type="int" value="20"/>
+      <property name="Client2_Command" type="array"><value type="string" value="xfce4-panel"/></property>
+      <property name="Client2_Priority" type="int" value="25"/>
+      <property name="Client3_Command" type="array"><value type="string" value="xfdesktop"/></property>
+      <property name="Client3_Priority" type="int" value="35"/>
+    </property>
+  </property>
+</channel>
+XML
+  rm -rf "$HOME/.cache/sessions"
+
+  # D-Bus would start the thumbnailer on demand; a user-level override disables it.
+  local DBS="$HOME/.local/share/dbus-1/services"
+  mkdir -p "$DBS"
+  for svc in org.xfce.Tumbler.Cache1 org.xfce.Tumbler.Manager1 org.xfce.Tumbler.Thumbnailer1; do
+    printf '[D-BUS Service]\nName=%s\nExec=%s/bin/false\n' "$svc" "$PREFIX" > "$DBS/$svc.service"
+  done
+
+  # Firefox: no Fission (one process per site) and few content processes.
+  local FF="$PREFIX/lib/firefox"
+  if [ -d "$FF/defaults/pref" ]; then
+    printf '%s\n' 'pref("general.config.filename", "desktop.cfg");' \
+      'pref("general.config.obscure_value", 0);' 'pref("general.config.sandbox_enabled", false);' \
+      > "$FF/defaults/pref/zz-desktop.js"
+    cat > "$FF/desktop.cfg" <<'CFG'
+// Linux desktop app: keep Firefox under Android's process limit (edit in about:config)
+defaultPref("fission.autostart", false);
+defaultPref("dom.ipc.processCount", 2);
+defaultPref("dom.ipc.processCount.webIsolated", 1);
+defaultPref("dom.ipc.processPrelaunch.enabled", false);
+defaultPref("dom.ipc.keepProcessesAlive.web", 0);
+defaultPref("browser.tabs.remote.separatePrivilegedContentProcess", false);
+defaultPref("browser.tabs.remote.separatePrivilegedMozillaWebContentProcess", false);
+defaultPref("browser.tabs.remote.separateFileUriProcess", false);
+defaultPref("extensions.webextensions.remote", false);
+defaultPref("media.av1.enabled", false);
+defaultPref("gfx.webrender.software", true);
+CFG
+  fi
+}
+
 pgrep -x pulseaudio >/dev/null || pulseaudio --start --exit-idle-time=-1 \
   --load="module-native-protocol-tcp auth-ip-acl=127.0.0.1 auth-anonymous=1" 2>/dev/null
+
+# The service passes these; when run by hand, read what the service last wrote.
+[ -n "${DESKTOP_APK:-}" ] || DESKTOP_APK=$(cat "$PREFIX/var/desktop-apk" 2>/dev/null)
+[ -n "${DESKTOP_PACKAGE:-}" ] || DESKTOP_PACKAGE=com.termux
 
 RESTARTED=0
 if ! x_alive; then
@@ -55,7 +165,16 @@ if ! x_alive; then
   echo "$(date '+%F %T') starting X server"
   pkill -f "$X_PATTERN" 2>/dev/null
   rm -f "$TMPDIR/.X11-unix/X0" "$TMPDIR/.X0-lock"
-  termux-x11 :0 -ac >>"$TMPDIR/termux-x11.log" 2>&1 &
+  if [ -f "${DESKTOP_APK:-}" ]; then
+    # X server built into this app: run its CmdEntryPoint from our own APK (same as the
+    # termux-x11 command does with the separate Termux:X11 app).
+    ( unset LD_LIBRARY_PATH LD_PRELOAD
+      CLASSPATH="$DESKTOP_APK" exec /system/bin/app_process -Xnoimage-dex2oat / \
+        --nice-name="termux-x11 ${DESKTOP_PACKAGE:-com.termux} :0" \
+        com.termux.x11.CmdEntryPoint :0 -ac ) >>"$TMPDIR/termux-x11.log" 2>&1 &
+  else
+    termux-x11 :0 -ac >>"$TMPDIR/termux-x11.log" 2>&1 &   # fallback: separate app
+  fi
   for i in $(seq 1 30); do [ -S "$TMPDIR/.X11-unix/X0" ] && break; sleep 0.5; done
 fi
 
@@ -64,15 +183,36 @@ if ! xfce_alive; then
   echo "$(date '+%F %T') starting XFCE"
   # Remove half-dead leftovers so nothing runs twice.
   pkill -f xfce4-session 2>/dev/null
-  for p in xfwm4 xfce4-panel xfdesktop xfsettingsd; do pkill -x "$p" 2>/dev/null; done
+  for p in xfwm4 xfce4-panel xfdesktop xfsettingsd wrapper-2.0; do pkill -x "$p" 2>/dev/null; done
+  kill_leftovers
+  slim_config
   sleep 0.5
   nohup dbus-launch --exit-with-session startxfce4 >>"$TMPDIR/xfce.log" 2>&1 &
+  # First start: apply the Plasma-like Breeze look once the session is up.
+  if [ ! -e "$HOME/.termux/theme-applied" ] && command -v desktop-theme >/dev/null; then
+    ( sleep 8 && desktop-theme dark >>"$TMPDIR/theme.log" 2>&1 &&
+      touch "$HOME/.termux/theme-applied" ) </dev/null >/dev/null 2>&1 &
+  fi
+fi
+
+# Job queue: scripts dropped into $PREFIX/var/desktop-jobs run here, in the app's own
+# context (the watchdog calls this script every few seconds). Only the app can write there.
+JOBS="$PREFIX/var/desktop-jobs"
+if [ -d "$JOBS" ]; then
+  for job in "$JOBS"/*.sh; do
+    [ -f "$job" ] || continue
+    mv "$job" "$job.running" 2>/dev/null || continue
+    ( nohup bash "$job.running" >"${job%.sh}.log" 2>&1; echo "exit=$?" >>"${job%.sh}.log"
+      rm -f "$job.running" ) </dev/null >/dev/null 2>&1 &
+  done
 fi
 
 # Exit 3 tells the watchdog something had to be restarted (for crash-loop detection).
 [ "$LAUNCH" = "1" ] || { [ "$RESTARTED" = 1 ] && exit 3; exit 0; }
+if [ -f "${DESKTOP_APK:-}" ]; then X11_ACTIVITY="${DESKTOP_PACKAGE:-com.termux}/com.termux.x11.MainActivity"
+else X11_ACTIVITY=com.termux.x11/com.termux.x11.MainActivity; fi
 if [ -n "$1" ] && command -v rish >/dev/null; then
-  rish -c "am start --display $1 -n com.termux.x11/com.termux.x11.MainActivity" >/dev/null
+  rish -c "am start --display $1 -n $X11_ACTIVITY" >/dev/null
 else
-  am start --user 0 -n com.termux.x11/com.termux.x11.MainActivity >/dev/null 2>&1
+  am start --user 0 -n "$X11_ACTIVITY" >/dev/null 2>&1
 fi

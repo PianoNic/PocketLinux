@@ -77,8 +77,10 @@ q -c xfwm4 -p /general/title_font      -n -t string -s "Noto Sans Bold 10"
 q -c xfwm4 -p /general/button_layout   -n -t string -s "O|HMC"
 q -c xfce4-desktop -p /desktop-icons/style -n -t int -s 0      # no desktop icons, like Plasma
 if [ -s "$WALL" ]; then
-  # Termux:X11's output is called "screen", plus whatever monitors xfdesktop already knows.
-  for m in /backdrop/screen0/monitorscreen $(q -c xfce4-desktop -l | grep -o '^/backdrop/screen0/monitor[^/]*' | sort -u); do
+  # Every monitor the X server reports (Termux:X11 renames its output at runtime, "builtin" on
+  # the phone's screen), plus whatever monitors xfdesktop already knows.
+  for m in $(xrandr --listmonitors 2>/dev/null | awk 'NR > 1 { print "/backdrop/screen0/monitor" $NF }') \
+           $(q -c xfce4-desktop -l | grep -o '^/backdrop/screen0/monitor[^/]*' | sort -u); do
     q -c xfce4-desktop -p "$m/workspace0/last-image" -n -t string -s "$WALL"
     q -c xfce4-desktop -p "$m/workspace0/image-style" -n -t int -s 5   # zoomed: fill, keep ratio
   done

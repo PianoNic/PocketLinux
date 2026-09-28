@@ -50,25 +50,48 @@ if ! mkdir "$LOCK" 2>/dev/null; then
 fi
 trap 'rmdir "$LOCK" 2>/dev/null' EXIT
 
-# The desktop itself renders on the CPU (stable). Apps that need the GPU are started
-# with the `gpu` command, so a broken GPU driver can never take the whole desktop down.
 export XDG_RUNTIME_DIR="$TMPDIR" PULSE_SERVER=127.0.0.1 DISPLAY=:0
-export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
 
-# xfwm4: no OpenGL vsync (it loads the GPU driver otherwise).
-XFWM="$HOME/.config/xfce4/xfconf/xfce-perchannel-xml/xfwm4.xml"
-if ! grep -q 'name="vblank_mode" type="string" value="off"' "$XFWM" 2>/dev/null; then
-  mkdir -p "$(dirname "$XFWM")"
-  cat > "$XFWM" <<'XML'
+# GPU: the whole desktop runs on Zink over Turnip when the phone has an Adreno GPU that
+# Turnip drives. Otherwise, or after `touch ~/.termux/no-gpu`, everything renders on the CPU.
+# If a GPU desktop dies 3 times within 2 minutes, it falls back to the CPU by itself.
+GPU_STARTS="$HOME/.termux/gpu-starts" NO_GPU="$HOME/.termux/no-gpu"
+GPU=0
+if [ ! -e "$NO_GPU" ] && [ -e "$HOME/.termux/gpu-ok" ]; then GPU=1
+elif [ ! -e "$NO_GPU" ] && [ ! -e "$HOME/.termux/gpu-checked" ] && command -v vulkaninfo >/dev/null; then
+  # Checked once: vulkaninfo can take a few seconds.
+  touch "$HOME/.termux/gpu-checked"
+  timeout 15 vulkaninfo --summary 2>/dev/null | grep -qi turnip && touch "$HOME/.termux/gpu-ok" && GPU=1
+fi
+gpu_mode() {
+  local XFWM="$HOME/.config/xfce4/xfconf/xfce-perchannel-xml/xfwm4.xml" VBLANK=off COMPOSITE=false
+  if [ $GPU = 1 ]; then
+    unset LIBGL_ALWAYS_SOFTWARE
+    export MESA_LOADER_DRIVER_OVERRIDE=zink GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy TU_DEBUG=noconform,sysmem
+    VBLANK=auto COMPOSITE=true
+  else
+    unset MESA_LOADER_DRIVER_OVERRIDE ZINK_DESCRIPTORS TU_DEBUG
+    export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
+  fi
+  # xfwm4: compositor and vsync only with the GPU (on the CPU they cost more than they give).
+  if grep -q 'name="vblank_mode"' "$XFWM" 2>/dev/null; then
+    # Only these two values, the theme keeps its own settings in the same file.
+    sed -i -e "s|\(name=\"vblank_mode\" type=\"string\" value=\"\)[^\"]*|\1$VBLANK|" \
+           -e "s|\(name=\"use_compositing\" type=\"bool\" value=\"\)[^\"]*|\1$COMPOSITE|" "$XFWM"
+  else
+    mkdir -p "$(dirname "$XFWM")"
+    cat > "$XFWM" <<XML
 <?xml version="1.0" encoding="UTF-8"?>
 <channel name="xfwm4" version="1.0">
   <property name="general" type="empty">
-    <property name="vblank_mode" type="string" value="off"/>
-    <property name="use_compositing" type="bool" value="false"/>
+    <property name="vblank_mode" type="string" value="$VBLANK"/>
+    <property name="use_compositing" type="bool" value="$COMPOSITE"/>
   </property>
 </channel>
 XML
-fi
+  fi
+}
+gpu_mode
 
 # ---- Stay under Android's phantom process limit ---------------------------------------
 # Android 12+ kills background child processes once an app has more than 32 of them
@@ -147,8 +170,15 @@ defaultPref("browser.tabs.remote.separatePrivilegedMozillaWebContentProcess", fa
 defaultPref("browser.tabs.remote.separateFileUriProcess", false);
 defaultPref("extensions.webextensions.remote", false);
 defaultPref("media.av1.enabled", false);
-defaultPref("gfx.webrender.software", true);
 CFG
+    # GPU desktop: hardware WebRender (Mesa is blocklisted by default), else software.
+    if [ $GPU = 1 ]; then
+      echo 'defaultPref("gfx.webrender.software", false);' >> "$FF/desktop.cfg"
+      echo 'defaultPref("gfx.webrender.all", true);' >> "$FF/desktop.cfg"
+      echo 'defaultPref("layers.acceleration.force-enabled", true);' >> "$FF/desktop.cfg"
+    else
+      echo 'defaultPref("gfx.webrender.software", true);' >> "$FF/desktop.cfg"
+    fi
   fi
 }
 
@@ -182,7 +212,17 @@ fi
 
 if ! xfce_alive; then
   RESTARTED=1
-  echo "$(date '+%F %T') starting XFCE"
+  echo "$(date '+%F %T') starting XFCE (GPU: $GPU)"
+  if [ $GPU = 1 ]; then
+    now=$(date +%s)
+    if [ "$(awk -v n="$now" '$1 > n - 120' "$GPU_STARTS" 2>/dev/null | wc -l)" -ge 3 ]; then
+      echo "GPU desktop keeps dying, falling back to the CPU (rm ~/.termux/no-gpu to retry)"
+      touch "$NO_GPU"; rm -f "$GPU_STARTS"
+      GPU=0; gpu_mode
+    else
+      echo "$now" >> "$GPU_STARTS"
+    fi
+  fi
   # Remove half-dead leftovers so nothing runs twice.
   pkill -f xfce4-session 2>/dev/null
   for p in xfwm4 xfce4-panel xfdesktop xfsettingsd wrapper-2.0; do pkill -x "$p" 2>/dev/null; done

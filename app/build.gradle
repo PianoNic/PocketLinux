@@ -26,7 +26,7 @@ android {
         implementation "androidx.annotation:annotation:1.9.0"
         implementation "androidx.core:core:1.13.1"
         implementation "androidx.preference:preference:1.2.1"   // PocketDisplay uses lorie's Prefs
-        implementation "com.google.android.material:material:1.12.0"
+        implementation "com.google.android.material:material:1.14.0"
 
         implementation project(":termux-shared")
         implementation project(":lorie")   // Termux:X11 display + X server, built in

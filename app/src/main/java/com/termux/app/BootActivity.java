@@ -1,26 +1,52 @@
 package com.termux.app;
 
+import android.animation.ArgbEvaluator;
+import android.animation.LayoutTransition;
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
 import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.graphics.Color;
-import android.graphics.Typeface;
+import android.content.res.ColorStateList;
+import android.content.res.Configuration;
+import android.graphics.Canvas;
+import android.graphics.ColorFilter;
+import android.graphics.Matrix;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.PixelFormat;
+import android.graphics.Rect;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.ShapeDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
-import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
+import android.view.animation.LinearInterpolator;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import androidx.dynamicanimation.animation.DynamicAnimation;
+import androidx.dynamicanimation.animation.FloatValueHolder;
+import androidx.dynamicanimation.animation.SpringAnimation;
+import androidx.dynamicanimation.animation.SpringForce;
+import androidx.graphics.shapes.Morph;
+import androidx.graphics.shapes.RoundedPolygon;
+import androidx.graphics.shapes.Shapes_androidKt;
+
+import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.color.DynamicColors;
+import com.google.android.material.color.MaterialColors;
+import com.google.android.material.materialswitch.MaterialSwitch;
+import com.google.android.material.shape.MaterialShapes;
+import com.termux.R;
 import com.termux.shared.net.uri.UriUtils;
 import com.termux.shared.termux.TermuxConstants;
 
@@ -44,22 +70,33 @@ public class BootActivity extends Activity {
     private static final File SETUP_LOG = new File(HOME, ".termux/desktop-setup.log");
     private static final File SETUP_EXIT = new File(HOME, ".termux/desktop-setup.exit");
     private static final File X11_APK = new File(PREFIX, "tmp/termux-x11.apk");
+    /** firstrun.sh also installs the developer tools when this file exists. */
+    private static final File DEV_TOOLS = new File(HOME, ".termux/dev-tools");
 
-    private enum State { INSTALLING, SETUP, NEED_X11, KILLER_WARNING, BOOTING, RUNNING, FAILED, LOGS }
+    private enum State { INSTALLING, WELCOME, SETUP, NEED_X11, KILLER_WARNING, BOOTING, RUNNING, FAILED, LOGS }
 
     private final Handler mHandler = new Handler(Looper.getMainLooper());
     private State mState = State.INSTALLING;
     private boolean mAutoLaunched = false;
+    private boolean mSetupConfirmed = false;
+    private boolean mLand;
 
     private TextView mTitle, mStatus, mLog;
     private ScrollView mLogScroll;
-    private ProgressBar mProgress;
+    private View mProgress, mLogCard, mDevCard, mShape, mBackdrop, mContent;
+    private LinearLayout mRoot;
+    private MaterialCardView mHero;
+    private ImageView mLogo;
+    private MaterialSwitch mDevSwitch;
     private Button mPrimary, mSecondary, mLogsButton;
+    private MorphDrawable mMorph;
+    private ObjectAnimator mSpin, mDrift;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
+        DynamicColors.applyToActivityIfAvailable(this);
         buildUi();
 
         TermuxInstaller.setupBootstrapIfNeeded(this, () -> {
@@ -77,6 +114,21 @@ public class BootActivity extends Activity {
         if (mState == State.NEED_X11 || mState == State.RUNNING || mState == State.KILLER_WARNING) next();
     }
 
+    // The desktop runs in this process, so the endless animations must not tick behind it.
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (mDrift != null) mDrift.resume();
+        if (mSpin != null) mSpin.resume();
+    }
+
+    @Override
+    protected void onStop() {
+        mDrift.pause();
+        mSpin.pause();
+        super.onStop();
+    }
+
     @Override
     protected void onDestroy() {
         mHandler.removeCallbacksAndMessages(null);
@@ -88,9 +140,16 @@ public class BootActivity extends Activity {
         if (!new File(PREFIX, "bin/bash").exists()) return; // bootstrap not done yet
 
         if (!READY.exists()) {
+            if (!mSetupConfirmed && !DesktopService.sSetupRunning) {
+                setState(State.WELCOME, "Welcome", getString(com.termux.R.string.app_display_name) + " downloads and installs a full Linux desktop. This takes 10-20 minutes.");
+                showButtons("Start setup", v -> { mSetupConfirmed = true; next(); }, null, null);
+                return;
+            }
+            mSetupConfirmed = true;
             setState(State.SETUP, "Setting up " + getString(com.termux.R.string.app_display_name), "First start: downloading and installing the desktop. This takes 10-20 minutes.");
             if (!DesktopService.sSetupRunning) {
                 SETUP_EXIT.delete();
+                applyDevTools();
                 startDesktopService(DesktopService.ACTION_SETUP);
             }
             pollSetup();
@@ -193,7 +252,23 @@ public class BootActivity extends Activity {
         READY.delete();
         SETUP_EXIT.delete();
         mAutoLaunched = false;
+        mSetupConfirmed = true;
         next();
+    }
+
+    private void applyDevTools() {
+        try {
+            if (mDevSwitch.isChecked()) {
+                //noinspection ResultOfMethodCallIgnored
+                DEV_TOOLS.getParentFile().mkdirs();
+                //noinspection ResultOfMethodCallIgnored
+                DEV_TOOLS.createNewFile();
+            } else {
+                //noinspection ResultOfMethodCallIgnored
+                DEV_TOOLS.delete();
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     private void openDesktop() {
@@ -351,69 +426,207 @@ public class BootActivity extends Activity {
     // ---- UI -------------------------------------------------------------------------------
 
     private void buildUi() {
-        getWindow().setStatusBarColor(Color.BLACK);
-        getWindow().setNavigationBarColor(Color.BLACK);
-
-        int pad = dp(24);
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.parseColor("#0B0D10"));
-        root.setPadding(pad, dp(64), pad, pad);
-
-        TextView logo = mTitle = new TextView(this);
-        logo.setText(getString(com.termux.R.string.app_display_name));
-        logo.setTextColor(Color.WHITE);
-        logo.setTextSize(40);
-        logo.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL));
-        root.addView(logo);
-
-        mStatus = new TextView(this);
-        mStatus.setTextColor(Color.parseColor("#9AA4B2"));
-        mStatus.setTextSize(15);
-        mStatus.setPadding(0, dp(8), 0, dp(16));
-        root.addView(mStatus);
-
-        mProgress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
-        mProgress.setIndeterminate(true);
-        root.addView(mProgress, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(6)));
-
-        mLogScroll = new ScrollView(this);
-        mLog = new TextView(this);
-        mLog.setTextColor(Color.parseColor("#6B7686"));
-        mLog.setTextSize(10);
-        mLog.setTypeface(Typeface.MONOSPACE);
-        mLog.setPadding(0, dp(16), 0, dp(16));
-        mLogScroll.addView(mLog);
-        root.addView(mLogScroll, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
-
-        LinearLayout buttons = new LinearLayout(this);
-        buttons.setOrientation(LinearLayout.HORIZONTAL);
-        buttons.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
-        mLogsButton = new Button(this, null, android.R.attr.borderlessButtonStyle);
-        mLogsButton.setText("Logs");
-        mLogsButton.setTextColor(Color.parseColor("#6B7686"));
+        setContentView(R.layout.activity_boot);
+        mRoot = findViewById(R.id.boot_root);
+        mHero = findViewById(R.id.boot_hero);
+        mContent = findViewById(R.id.boot_content);
+        mBackdrop = findViewById(R.id.boot_backdrop);
+        mShape = findViewById(R.id.boot_shape);
+        mLogo = findViewById(R.id.boot_logo);
+        mTitle = findViewById(R.id.boot_title);
+        mStatus = findViewById(R.id.boot_status);
+        mProgress = findViewById(R.id.boot_progress);
+        mDevCard = findViewById(R.id.boot_dev_card);
+        mDevSwitch = findViewById(R.id.boot_dev_switch);
+        mLogCard = findViewById(R.id.boot_log_card);
+        mLogScroll = findViewById(R.id.boot_log_scroll);
+        mLog = findViewById(R.id.boot_log);
+        mLogsButton = findViewById(R.id.boot_logs);
+        mSecondary = findViewById(R.id.boot_secondary);
+        mPrimary = findViewById(R.id.boot_primary);
         mLogsButton.setOnClickListener(v -> showLogs());
-        buttons.addView(mLogsButton, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-        mSecondary = new Button(this, null, android.R.attr.borderlessButtonStyle);
-        mSecondary.setTextColor(Color.parseColor("#9AA4B2"));
-        mPrimary = new Button(this);
-        buttons.addView(mSecondary);
-        buttons.addView(mPrimary);
-        root.addView(buttons);
+        mDevSwitch.setChecked(DEV_TOOLS.exists());
 
-        setContentView(root);
+        int surface = MaterialColors.getColor(mRoot, com.google.android.material.R.attr.colorSurface);
+        getWindow().setStatusBarColor(surface);
+        getWindow().setNavigationBarColor(surface);
+
+        for (LinearLayout l : new LinearLayout[]{mRoot, (LinearLayout) mContent}) {
+            l.setLayoutTransition(new LayoutTransition());
+            l.getLayoutTransition().enableTransitionType(LayoutTransition.CHANGING);
+        }
+        mHero.setClipToOutline(true);
+        mMorph = new MorphDrawable();
+        mMorph.setColor(MaterialColors.getColor(mRoot, androidx.appcompat.R.attr.colorPrimary));
+        mShape.setBackground(mMorph);
+        mBackdrop.setBackground(MaterialShapes.createShapeDrawable(MaterialShapes.SUNNY));
+        mSpin = ObjectAnimator.ofFloat(mShape, View.ROTATION, 0, 360).setDuration(9000);
+        mSpin.setRepeatCount(ValueAnimator.INFINITE);
+        mSpin.setInterpolator(new LinearInterpolator());
+        mDrift = ObjectAnimator.ofFloat(mBackdrop, View.ROTATION, 0, 360).setDuration(60000);
+        mDrift.setRepeatCount(ValueAnimator.INFINITE);
+        mDrift.setInterpolator(new LinearInterpolator());
+        mDrift.start();
+
+        applyOrientation(getResources().getConfiguration());
         setState(State.INSTALLING, "Preparing", "Installing the base system...");
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration config) {
+        super.onConfigurationChanged(config);
+        applyOrientation(config);
+    }
+
+    private void applyOrientation(Configuration config) {
+        mLand = config.orientation == Configuration.ORIENTATION_LANDSCAPE;
+        mRoot.setOrientation(mLand ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
+        mContent.setPadding(dp(mLand ? 24 : 8), dp(mLand ? 8 : 24), dp(8), 0);
+        relayout();
+    }
+
+    /** Hero on the left in landscape. In portrait it sits on top and fills the space when no log is shown. */
+    private void relayout() {
+        boolean log = mLogCard.getVisibility() == View.VISIBLE;
+        int match = LinearLayout.LayoutParams.MATCH_PARENT, wrap = LinearLayout.LayoutParams.WRAP_CONTENT;
+        if (mLand) {
+            mHero.setLayoutParams(new LinearLayout.LayoutParams(0, match, 0.8f));
+            mContent.setLayoutParams(new LinearLayout.LayoutParams(0, match, 1.2f));
+        } else {
+            mHero.setLayoutParams(new LinearLayout.LayoutParams(match, log ? dp(224) : 0, log ? 0 : 1f));
+            mContent.setLayoutParams(new LinearLayout.LayoutParams(match, log ? 0 : wrap, log ? 1f : 0));
+        }
     }
 
     private void setState(State state, String title, String status) {
         mState = state;
+        if (!title.contentEquals(mTitle.getText())) {
+            spring(mTitle, DynamicAnimation.TRANSLATION_Y, dp(32), 0);
+            spring(mStatus, DynamicAnimation.TRANSLATION_Y, dp(48), 0);
+            mTitle.setAlpha(0);
+            mStatus.setAlpha(0);
+            mTitle.animate().alpha(1).setDuration(250);
+            mStatus.animate().alpha(1).setDuration(350);
+        }
         mTitle.setText(title);
         mStatus.setText(status);
         boolean busy = state == State.INSTALLING || state == State.SETUP || state == State.BOOTING;
-        mProgress.setVisibility(busy ? View.VISIBLE : View.INVISIBLE);
-        mLogScroll.setVisibility(state == State.SETUP || state == State.FAILED || state == State.LOGS ? View.VISIBLE : View.INVISIBLE);
-        mLogsButton.setVisibility(state == State.LOGS || state == State.INSTALLING ? View.INVISIBLE : View.VISIBLE);
+        mProgress.setVisibility(busy ? View.VISIBLE : View.GONE);
+        boolean log = state == State.SETUP || state == State.FAILED || state == State.LOGS;
+        mLogCard.setVisibility(log ? View.VISIBLE : mLand ? View.INVISIBLE : View.GONE);
+        relayout();
+        mDevCard.setVisibility(state == State.WELCOME || state == State.FAILED ? View.VISIBLE : View.GONE);
+        mLogsButton.setVisibility(state == State.LOGS || state == State.INSTALLING || state == State.WELCOME ? View.INVISIBLE : View.VISIBLE);
         if (busy) showButtons(null, null, null, null);
+        applyLook(state, busy);
+    }
+
+    /** Each state gets its own shape and color. The hero shape springs into it and spins while busy. */
+    private void applyLook(State state, boolean busy) {
+        RoundedPolygon shape;
+        int container = com.google.android.material.R.attr.colorPrimaryContainer;
+        int color = androidx.appcompat.R.attr.colorPrimary;
+        int onColor = com.google.android.material.R.attr.colorOnPrimary;
+        switch (state) {
+            case RUNNING: shape = MaterialShapes.SOFT_BURST; break;
+            case WELCOME: shape = MaterialShapes.FLOWER; break;
+            case NEED_X11: case KILLER_WARNING: shape = MaterialShapes.PUFFY_DIAMOND; break;
+            case LOGS:
+                shape = MaterialShapes.CLOVER_4;
+                container = com.google.android.material.R.attr.colorTertiaryContainer;
+                color = com.google.android.material.R.attr.colorTertiary;
+                onColor = com.google.android.material.R.attr.colorOnTertiary;
+                break;
+            case FAILED:
+                shape = MaterialShapes.SOFT_BOOM;
+                container = com.google.android.material.R.attr.colorErrorContainer;
+                color = androidx.appcompat.R.attr.colorError;
+                onColor = com.google.android.material.R.attr.colorOnError;
+                break;
+            default: shape = MaterialShapes.COOKIE_9;
+        }
+        if (mMorph.morphTo(shape)) {
+            spring(mShape, DynamicAnimation.SCALE_X, 0.7f, 1);
+            spring(mShape, DynamicAnimation.SCALE_Y, 0.7f, 1);
+        }
+
+        int c0 = mHero.getCardBackgroundColor().getDefaultColor(), s0 = mMorph.mPaint.getColor();
+        int c1 = MaterialColors.getColor(mHero, container), s1 = MaterialColors.getColor(mHero, color);
+        ArgbEvaluator argb = new ArgbEvaluator();
+        ValueAnimator fade = ValueAnimator.ofFloat(0, 1).setDuration(450);
+        fade.addUpdateListener(a -> {
+            float f = a.getAnimatedFraction();
+            int s = (int) argb.evaluate(f, s0, s1);
+            mHero.setCardBackgroundColor((int) argb.evaluate(f, c0, c1));
+            mMorph.setColor(s);
+            ((ShapeDrawable) mBackdrop.getBackground()).getPaint().setColor(MaterialColors.compositeARGBWithAlpha(s, 56));
+            mBackdrop.invalidate();
+        });
+        fade.start();
+        mLogo.setImageTintList(ColorStateList.valueOf(MaterialColors.getColor(mHero, onColor)));
+
+        if (busy && !mSpin.isStarted()) {
+            mSpin.setFloatValues(mShape.getRotation(), mShape.getRotation() + 360);
+            mSpin.start();
+        } else if (!busy && mSpin.isStarted()) {
+            mSpin.cancel();
+            float r = mShape.getRotation() % 360;
+            spring(mShape, DynamicAnimation.ROTATION, r, r > 180 ? 360 : 0);
+        }
+    }
+
+    private static void spring(View v, DynamicAnimation.ViewProperty property, float from, float to) {
+        SpringAnimation s = new SpringAnimation(v, property, to).setStartValue(from);
+        s.getSpring().setDampingRatio(SpringForce.DAMPING_RATIO_MEDIUM_BOUNCY).setStiffness(SpringForce.STIFFNESS_LOW);
+        s.start();
+    }
+
+    /** Draws a Material shape that morphs into the next one with a bouncy spring. */
+    private static final class MorphDrawable extends Drawable {
+        final Paint mPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Path mPath = new Path();
+        private final Matrix mMatrix = new Matrix();
+        private RoundedPolygon mTarget = MaterialShapes.COOKIE_9;
+        private Morph mMorph = new Morph(mTarget, mTarget);
+        private float mProgress = 1;
+        private final SpringAnimation mSpring = new SpringAnimation(new FloatValueHolder(1));
+
+        MorphDrawable() {
+            mSpring.setSpring(new SpringForce(1).setDampingRatio(0.45f).setStiffness(SpringForce.STIFFNESS_LOW));
+            mSpring.addUpdateListener((a, value, velocity) -> { mProgress = value; invalidateSelf(); });
+        }
+
+        /** Returns false when already showing that shape. */
+        boolean morphTo(RoundedPolygon shape) {
+            if (shape == mTarget) return false;
+            mMorph = new Morph(mTarget, shape);
+            mTarget = shape;
+            mSpring.cancel();
+            mSpring.setStartValue(0);
+            mSpring.animateToFinalPosition(1);
+            return true;
+        }
+
+        void setColor(int color) {
+            mPaint.setColor(color);
+            invalidateSelf();
+        }
+
+        @Override
+        public void draw(Canvas canvas) {
+            Rect b = getBounds();
+            mPath.rewind();
+            Shapes_androidKt.toPath(mMorph, mProgress, mPath);
+            // Material shapes live in a unit square.
+            mMatrix.setScale(b.width(), b.height());
+            mMatrix.postTranslate(b.left, b.top);
+            mPath.transform(mMatrix);
+            canvas.drawPath(mPath, mPaint);
+        }
+
+        @Override public void setAlpha(int alpha) { mPaint.setAlpha(alpha); }
+        @Override public void setColorFilter(ColorFilter cf) { mPaint.setColorFilter(cf); }
+        @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
     }
 
     private void showButtons(String primary, View.OnClickListener p, String secondary, View.OnClickListener s) {

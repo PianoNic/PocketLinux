@@ -195,6 +195,7 @@ public class DesktopService extends Service {
         return b.setContentTitle(getString(R.string.app_display_name))
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_service_notification)
+            .setColor(getColor(R.color.pocket_amber))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setShowWhen(false)

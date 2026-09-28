@@ -2,7 +2,6 @@ package com.termux.app;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.ProgressDialog;
 import android.content.Context;
 import android.os.Build;
 import android.os.Environment;
@@ -44,7 +43,7 @@ import static com.termux.shared.termux.TermuxConstants.TERMUX_STAGING_PREFIX_DIR
  * (1) If $PREFIX already exist, assume that it is correct and be done. Note that this relies on that we do not create a
  * broken $PREFIX directory below.
  * <p/>
- * (2) A progress dialog is shown with "Installing..." message and a spinner.
+ * (2) The boot screen shows its own progress while this runs.
  * <p/>
  * (3) A staging directory, $STAGING_PREFIX, is cleared if left over from broken installation below.
  * <p/>
@@ -114,7 +113,6 @@ final class TermuxInstaller {
             Logger.logInfo(LOG_TAG, "The termux prefix directory \"" + TERMUX_PREFIX_DIR_PATH + "\" does not exist but another file exists at its destination.");
         }
 
-        final ProgressDialog progress = ProgressDialog.show(activity, null, activity.getString(R.string.bootstrap_installer_body), true, false);
         new Thread() {
             @Override
             public void run() {
@@ -233,14 +231,6 @@ final class TermuxInstaller {
                 } catch (final Exception e) {
                     showBootstrapErrorDialog(activity, whenDone, Logger.getStackTracesMarkdownString(null, Logger.getStackTracesStringArray(e)));
 
-                } finally {
-                    activity.runOnUiThread(() -> {
-                        try {
-                            progress.dismiss();
-                        } catch (RuntimeException e) {
-                            // Activity already dismissed - ignore.
-                        }
-                    });
                 }
             }
         }.start();

@@ -46,6 +46,17 @@ for t in "$HOME/.themes/$GTK" "$PREFIX/share/themes/$GTK"; do
   [ -d "$t/xfwm4" ] && WM="$GTK"
 done
 
+# Wallpaper: Plasma 6's Scarlet Tree (axo1otl, CC-BY-SA-4.0), dark or light to match.
+WALLDIR="$HOME/.local/share/wallpapers"
+WALL="$WALLDIR/scarlet-tree-$MODE.png"
+if [ ! -s "$WALL" ]; then
+  say "Downloading wallpaper"
+  v=images; [ "$MODE" = light ] || v=images_dark
+  mkdir -p "$WALLDIR"
+  curl -fsSL -o "$WALL"     "https://invent.kde.org/plasma/plasma-workspace-wallpapers/-/raw/master/ScarletTree/contents/$v/5120x2880.png" ||
+    rm -f "$WALL"
+fi
+
 # ---- apply ------------------------------------------------------------------------------
 # Talk to the running session's settings daemon.
 sess=$(pgrep -x xfce4-session | head -1)
@@ -65,6 +76,13 @@ q -c xfwm4 -p /general/theme           -n -t string -s "$WM"
 q -c xfwm4 -p /general/title_font      -n -t string -s "Noto Sans Bold 10"
 q -c xfwm4 -p /general/button_layout   -n -t string -s "O|HMC"
 q -c xfce4-desktop -p /desktop-icons/style -n -t int -s 0      # no desktop icons, like Plasma
+if [ -s "$WALL" ]; then
+  # Termux:X11's output is called "screen", plus whatever monitors xfdesktop already knows.
+  for m in /backdrop/screen0/monitorscreen $(q -c xfce4-desktop -l | grep -o '^/backdrop/screen0/monitor[^/]*' | sort -u); do
+    q -c xfce4-desktop -p "$m/workspace0/last-image" -n -t string -s "$WALL"
+    q -c xfce4-desktop -p "$m/workspace0/image-style" -n -t int -s 5   # zoomed: fill, keep ratio
+  done
+fi
 
 say "Panel layout"
 q -c xfce4-panel -p /panels -r -R
@@ -93,8 +111,8 @@ q -c xfce4-panel -p /plugins/plugin-5/digital-date-format -n -t string -s "%d.%m
 
 # Whisker Menu: Kickoff-like
 mkdir -p "$HOME/.config/xfce4/panel"
-cat > "$HOME/.config/xfce4/panel/whiskermenu-1.rc" <<'RC'
-button-icon=start-here-kde
+cat > "$HOME/.config/xfce4/panel/whiskermenu-1.rc" <<RC
+button-icon=$PREFIX/share/pocket-linux/menu-icon.svg
 button-single-row=false
 show-button-title=false
 show-button-icon=true

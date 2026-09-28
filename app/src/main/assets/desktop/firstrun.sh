@@ -27,7 +27,7 @@ pkgi x11-repo tur-repo glibc-repo
 yes | pkg update $APT_OPTS
 
 step "Desktop: XFCE + audio (the display is built into the app)"
-pkgi xkeyboard-config xfce4 xfce4-terminal pulseaudio dbus firefox || warn "some desktop packages failed"
+pkgi xkeyboard-config xfce4 xfce4-terminal pulseaudio dbus firefox synaptic || warn "some desktop packages failed"
 step "Plasma-like look: Breeze theme, Whisker Menu, Docklike taskbar"
 pkgi breeze-gtk kf6-breeze-icons xfce4-whiskermenu-plugin xfce4-docklike-plugin || warn "theme packages failed"
 

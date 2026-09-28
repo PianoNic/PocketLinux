@@ -69,6 +69,8 @@ public class BootActivity extends Activity {
     private static final File READY = new File(HOME, ".termux/desktop-ready");
     private static final File SETUP_LOG = new File(HOME, ".termux/desktop-setup.log");
     private static final File SETUP_EXIT = new File(HOME, ".termux/desktop-setup.exit");
+    /** "<step> <steps> <title>", written by firstrun.sh before each step. */
+    private static final File SETUP_PROGRESS = new File(HOME, ".termux/desktop-setup.progress");
     private static final File X11_APK = new File(PREFIX, "tmp/termux-x11.apk");
     /** firstrun.sh also installs the developer tools when this file exists. */
     private static final File DEV_TOOLS = new File(HOME, ".termux/dev-tools");
@@ -141,14 +143,16 @@ public class BootActivity extends Activity {
 
         if (!READY.exists()) {
             if (!mSetupConfirmed && !DesktopService.sSetupRunning) {
-                setState(State.WELCOME, "Welcome", getString(com.termux.R.string.app_display_name) + " downloads and installs a full Linux desktop. This takes 10-20 minutes.");
+                setState(State.WELCOME, "Welcome", getString(com.termux.R.string.app_display_name) + " is almost ready. Setting up the desktop takes under a minute, plus the packs you pick below.");
                 showButtons("Start setup", v -> { mSetupConfirmed = true; next(); }, null, null);
                 return;
             }
             mSetupConfirmed = true;
-            setState(State.SETUP, "Setting up " + getString(com.termux.R.string.app_display_name), "First start: downloading and installing the desktop. This takes 10-20 minutes.");
+            setState(State.SETUP, "Setting up " + getString(com.termux.R.string.app_display_name), "Getting the desktop ready...");
             if (!DesktopService.sSetupRunning) {
                 SETUP_EXIT.delete();
+                //noinspection ResultOfMethodCallIgnored
+                SETUP_PROGRESS.delete();
                 applyDevTools();
                 startDesktopService(DesktopService.ACTION_SETUP);
             }
@@ -231,6 +235,7 @@ public class BootActivity extends Activity {
         mHandler.postDelayed(() -> {
             if (mState != State.SETUP) return;
             showLog(tail(SETUP_LOG, 6000));
+            showSetupProgress();
 
             if (SETUP_EXIT.exists() && !DesktopService.sSetupRunning) {
                 String code = read(SETUP_EXIT).trim();
@@ -250,6 +255,8 @@ public class BootActivity extends Activity {
     private void retrySetup() {
         READY.delete();
         SETUP_EXIT.delete();
+        //noinspection ResultOfMethodCallIgnored
+        SETUP_PROGRESS.delete();
         mAutoLaunched = false;
         mSetupConfirmed = true;
         next();
@@ -507,6 +514,21 @@ public class BootActivity extends Activity {
         } else {
             mHero.setLayoutParams(new LinearLayout.LayoutParams(match, log ? dp(224) : 0, log ? 0 : 1f));
             mContent.setLayoutParams(new LinearLayout.LayoutParams(match, log ? 0 : wrap, log ? 1f : 0));
+        }
+    }
+
+    /** Which setup step runs, as text and as a filling bar. */
+    private void showSetupProgress() {
+        String[] p = read(SETUP_PROGRESS).trim().split(" ", 3);
+        if (p.length < 3) return;
+        try {
+            int step = Integer.parseInt(p[0]), steps = Math.max(1, Integer.parseInt(p[1]));
+            String status = step >= steps && "Done".equals(p[2]) ? "Starting the desktop..." : "Step " + step + " of " + steps + ": " + p[2];
+            if (!status.contentEquals(mStatus.getText())) mStatus.setText(status);
+            LinearProgressIndicator bar = (LinearProgressIndicator) mProgress;
+            if (bar.isIndeterminate()) bar.setIndeterminate(false);
+            bar.setProgressCompat((step - 1) * 100 / steps + (step >= steps ? 100 / steps : 0), true);
+        } catch (NumberFormatException ignored) {
         }
     }
 

@@ -12,7 +12,27 @@ rm -f "$HOME/.termux/desktop-setup.exit"
 exec > >(tee -a "$LOG") 2>&1
 trap 'echo $? > "$HOME/.termux/desktop-setup.exit"' EXIT
 
-step() { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
+# Optional packs: the boot screen switches or `desktop-setup --dev --distro` set these flags.
+for arg in "$@"; do
+  case "$arg" in
+    --dev) touch "$HOME/.termux/dev-tools" ;;
+    --distro) touch "$HOME/.termux/distro" ;;
+  esac
+done
+
+# Progress for the boot screen: "<step> <steps> <title>" in desktop-setup.progress. The number of
+# steps depends on the packs and on whether this runs on the pre-installed system.
+PROGRESS="$HOME/.termux/desktop-setup.progress"
+STEPS=5
+[ -e "$PREFIX/etc/pocket-linux-system" ] || STEPS=$((STEPS + 1))
+[ -e "$HOME/.termux/distro" ] && STEPS=$((STEPS + 1))
+[ -e "$HOME/.termux/dev-tools" ] && STEPS=$((STEPS + 2))
+STEP=0
+step() {
+  STEP=$((STEP + 1))
+  echo "$STEP $STEPS $*" > "$PROGRESS"
+  printf '\n\033[1;36m==> %s\033[0m\n' "$*"
+}
 warn() { printf '\033[1;33m!! %s\033[0m\n' "$*"; }
 
 export DEBIAN_FRONTEND=noninteractive
@@ -52,14 +72,6 @@ pkgi breeze-gtk kf6-breeze-icons xfce4-whiskermenu-plugin xfce4-docklike-plugin 
 step "GPU acceleration: Turnip (Adreno Vulkan) + Zink (OpenGL on Vulkan)"
 pkgi mesa-vulkan-icd-freedreno vulkan-tools mesa-demos 2>/dev/null || warn "GPU packages failed, desktop falls back to CPU"
 pkgi mesa-zink 2>/dev/null || true
-
-# Optional packs: the boot screen switches or `desktop-setup --dev --distro` set these flags.
-for arg in "$@"; do
-  case "$arg" in
-    --dev) touch "$HOME/.termux/dev-tools" ;;
-    --distro) touch "$HOME/.termux/distro" ;;
-  esac
-done
 
 if [ -e "$HOME/.termux/distro" ]; then
 step "Linux apps: Debian 13 with its app store"
@@ -118,6 +130,7 @@ if ! command -v startxfce4 >/dev/null; then
 fi
 
 touch "$MARKER"
+echo "$STEPS $STEPS Done" > "$PROGRESS"
 
 echo
 echo "Setup finished. Starting the desktop..."

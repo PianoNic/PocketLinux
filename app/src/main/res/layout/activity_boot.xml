@@ -83,7 +83,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
             android:visibility="gone"
-            app:cardBackgroundColor="?attr/colorTertiaryContainer"
+            app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
             app:cardCornerRadius="28dp">
 
             <LinearLayout
@@ -107,7 +107,7 @@
                         android:layout_height="wrap_content"
                         android:text="Developer tools"
                         android:textAppearance="?attr/textAppearanceTitleMediumEmphasized"
-                        android:textColor="?attr/colorOnTertiaryContainer" />
+                        android:textColor="?attr/colorOnSurface" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -115,7 +115,7 @@
                         android:layout_marginTop="2dp"
                         android:text="Node, Python, Rust, clang, code-server, .NET. About 3 GB more and 15 min longer."
                         android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textColor="?attr/colorOnTertiaryContainer" />
+                        android:textColor="?attr/colorOnSurface" />
                 </LinearLayout>
 
                 <com.google.android.material.materialswitch.MaterialSwitch
@@ -133,7 +133,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:visibility="gone"
-            app:cardBackgroundColor="?attr/colorSecondaryContainer"
+            app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
             app:cardCornerRadius="28dp">
 
             <LinearLayout
@@ -157,7 +157,7 @@
                         android:layout_height="wrap_content"
                         android:text="Linux apps (Debian)"
                         android:textAppearance="?attr/textAppearanceTitleMediumEmphasized"
-                        android:textColor="?attr/colorOnSecondaryContainer" />
+                        android:textColor="?attr/colorOnSurface" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -165,7 +165,7 @@
                         android:layout_marginTop="2dp"
                         android:text="An app store with 68,000 Debian packages, for apps Termux does not have. About 600 MB more and 3 min longer."
                         android:textAppearance="?attr/textAppearanceBodyMedium"
-                        android:textColor="?attr/colorOnSecondaryContainer" />
+                        android:textColor="?attr/colorOnSurface" />
                 </LinearLayout>
 
                 <com.google.android.material.materialswitch.MaterialSwitch

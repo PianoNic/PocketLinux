@@ -105,6 +105,15 @@ export NO_AT_BRIDGE=1 GIO_USE_VFS=local GVFS_DISABLE_FUSE=1 GSETTINGS_BACKEND=ke
 slim_config() {
   local AUTO="$HOME/.config/autostart"
   mkdir -p "$AUTO"
+  # XFCE's own panels, but the bottom bar starts with a home button for all apps (the
+  # applications menu) instead of "show desktop". Only as a start: once the panel has
+  # settings of its own, they stay.
+  local PANEL="$HOME/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml"
+  if [ ! -e "$PANEL" ] && [ -f "$PREFIX/etc/xdg/xfce4/panel/default.xml" ]; then
+    mkdir -p "$(dirname "$PANEL")"
+    sed 's|<property name="plugin-11" type="string" value="showdesktop"/>|<property name="plugin-11" type="string" value="applicationsmenu"><property name="show-button-title" type="bool" value="false"/></property>|' \
+      "$PREFIX/etc/xdg/xfce4/panel/default.xml" > "$PANEL"
+  fi
   # Services the desktop does not need on a phone.
   for d in xfce4-power-manager xfce4-notifyd at-spi-dbus-bus gnome-keyring-pkcs11 \
            gnome-keyring-secrets gnome-keyring-ssh xfce4-screensaver light-locker \

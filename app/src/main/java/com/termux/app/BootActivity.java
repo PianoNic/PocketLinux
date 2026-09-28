@@ -42,9 +42,9 @@ import androidx.graphics.shapes.RoundedPolygon;
 import androidx.graphics.shapes.Shapes_androidKt;
 
 import com.google.android.material.card.MaterialCardView;
-import com.google.android.material.color.DynamicColors;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.materialswitch.MaterialSwitch;
+import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.shape.MaterialShapes;
 import com.termux.R;
 import com.termux.shared.net.uri.UriUtils;
@@ -97,10 +97,9 @@ public class BootActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
-        DynamicColors.applyToActivityIfAvailable(this);
         buildUi();
 
-        TermuxInstaller.setupBootstrapIfNeeded(this, () -> {
+        TermuxInstaller.setupBootstrapIfNeeded(this, this::showInstallProgress, () -> {
             new Thread(() -> {
                 installScripts();
                 runOnUiThread(this::next);
@@ -511,7 +510,19 @@ public class BootActivity extends Activity {
         }
     }
 
+    /** Real progress while the system downloads and unpacks (other states keep the endless wave). */
+    private void showInstallProgress(String status, int percent) {
+        runOnUiThread(() -> {
+            if (mState != State.INSTALLING) return;
+            mStatus.setText(status);
+            LinearProgressIndicator bar = (LinearProgressIndicator) mProgress;
+            if (bar.isIndeterminate()) bar.setIndeterminate(false);
+            bar.setProgressCompat(percent, true);
+        });
+    }
+
     private void setState(State state, String title, String status) {
+        if (state != mState) ((LinearProgressIndicator) mProgress).setIndeterminate(true);
         mState = state;
         if (!title.contentEquals(mTitle.getText())) {
             spring(mTitle, DynamicAnimation.TRANSLATION_Y, dp(32), 0);

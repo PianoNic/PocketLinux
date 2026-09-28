@@ -64,7 +64,16 @@ final class TermuxInstaller {
     private static final String LOG_TAG = "TermuxInstaller";
 
     /** Performs bootstrap setup if necessary. */
-    static void setupBootstrapIfNeeded(final Activity activity, final Runnable whenDone) {
+    /** Download and unpack progress for the boot screen, called from the installer thread. */
+    interface Progress {
+        void update(String status, int percent);
+    }
+
+    /** The last caller's progress, for a retry from the error dialog. */
+    private static Progress sProgress = (status, percent) -> { };
+
+    static void setupBootstrapIfNeeded(final Activity activity, final Progress progress, final Runnable whenDone) {
+        sProgress = progress;
         String bootstrapErrorMessage;
         Error filesDirectoryAccessibleError;
 
@@ -158,8 +167,23 @@ final class TermuxInstaller {
                     final List<Pair<String, String>> symlinks = new ArrayList<>(50);
                     final List<String> executables = new ArrayList<>();
 
-                    final File zipFile = downloadSystem(activity);
-                    try (ZipInputStream zipInput = new ZipInputStream(new BufferedInputStream(new FileInputStream(zipFile), 1 << 16))) {
+                    final File zipFile = downloadSystem(activity, progress);
+                    final long zipSize = Math.max(1, zipFile.length());
+                    // Counts the compressed bytes read, for the unpack progress.
+                    final long[] read = {0};
+                    final int[] shown = {-1};
+                    InputStream counted = new java.io.FilterInputStream(new FileInputStream(zipFile)) {
+                        @Override public int read(byte[] b, int off, int len) throws java.io.IOException {
+                            int n = super.read(b, off, len);
+                            if (n > 0) {
+                                read[0] += n;
+                                int pct = (int) (read[0] * 100 / zipSize);
+                                if (pct != shown[0]) { shown[0] = pct; progress.update("Unpacking the system: " + pct + " %", pct); }
+                            }
+                            return n;
+                        }
+                    };
+                    try (ZipInputStream zipInput = new ZipInputStream(new BufferedInputStream(counted, 1 << 16))) {
                         ZipEntry zipEntry;
                         while ((zipEntry = zipInput.getNextEntry()) != null) {
                             if (zipEntry.getName().equals("SYMLINKS.txt")) {
@@ -260,7 +284,7 @@ final class TermuxInstaller {
                     .setPositiveButton(R.string.bootstrap_error_try_again, (dialog, which) -> {
                         dialog.dismiss();
                         FileUtils.deleteFile("termux prefix directory", TERMUX_PREFIX_DIR_PATH, true);
-                        TermuxInstaller.setupBootstrapIfNeeded(activity, whenDone);
+                        TermuxInstaller.setupBootstrapIfNeeded(activity, sProgress, whenDone);
                     }).show();
             } catch (WindowManager.BadTokenException e1) {
                 // Activity already dismissed - ignore.
@@ -390,7 +414,7 @@ final class TermuxInstaller {
         "https://github.com/termux/termux-packages/releases/download/bootstrap-2026.02.12-r1%2Bapt.android-7/bootstrap-aarch64.zip";
     private static final String BOOTSTRAP_SHA256 = "ea2aeba8819e517db711f8c32369e89e7c52cee73e07930ff91185e1ab93f4f3";
 
-    private static File downloadSystem(Context context) throws Exception {
+    private static File downloadSystem(Context context, Progress progress) throws Exception {
         File target = new File(context.getCacheDir(), "system.zip");
         String url = com.termux.BuildConfig.POCKET_SYSTEM_URL;
         if (!url.isEmpty()) {
@@ -399,12 +423,12 @@ final class TermuxInstaller {
                 // its checksum from the file published next to it.
                 String sha256 = com.termux.BuildConfig.POCKET_SYSTEM_SHA256;
                 if (sha256.isEmpty()) sha256 = fetchText(url + ".sha256").trim();
-                return download(url, sha256, target);
+                return download(url, sha256, target, progress);
             } catch (IOException e) {
                 Logger.logStackTraceWithMessage(LOG_TAG, "Pre-installed system not available, using the Termux bootstrap", e);
             }
         }
-        return download(BOOTSTRAP_URL, BOOTSTRAP_SHA256, target);
+        return download(BOOTSTRAP_URL, BOOTSTRAP_SHA256, target, progress);
     }
 
     private static String fetchText(String url) throws IOException {
@@ -420,7 +444,7 @@ final class TermuxInstaller {
     }
 
     /** Downloads to a file (the pre-installed system is too big to hold in memory). */
-    private static File download(String url, String sha256, File target) throws Exception {
+    private static File download(String url, String sha256, File target, Progress progress) throws Exception {
         Exception last = null;
         for (int attempt = 0; attempt < 3; attempt++) {
             try {
@@ -430,9 +454,20 @@ final class TermuxInstaller {
                 c.setReadTimeout(60000);
                 java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
                 try (InputStream in = c.getInputStream(); FileOutputStream out = new FileOutputStream(target)) {
+                    long total = c.getContentLengthLong(), done = 0;
+                    int shown = -1;
                     byte[] buf = new byte[1 << 16];
                     int n;
-                    while ((n = in.read(buf)) > 0) { out.write(buf, 0, n); md.update(buf, 0, n); }
+                    while ((n = in.read(buf)) > 0) {
+                        out.write(buf, 0, n);
+                        md.update(buf, 0, n);
+                        done += n;
+                        int pct = total > 0 ? (int) (done * 100 / total) : 0;
+                        if (total > 0 && pct != shown) {
+                            shown = pct;
+                            progress.update("Downloading the system: " + (done >> 20) + " of " + (total >> 20) + " MB", pct);
+                        }
+                    }
                 }
                 StringBuilder hex = new StringBuilder();
                 for (byte b : md.digest()) hex.append(String.format("%02x", b));

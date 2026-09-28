@@ -20,6 +20,10 @@ GUEST_ENV=(DISPLAY="${DISPLAY:-:0}" PULSE_SERVER=127.0.0.1 XDG_RUNTIME_DIR=/tmp 
            CHROMIUM_FLAGS="--no-sandbox --disable-gpu"   # Debian's chromium, see debian-apps
            PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin)
 
+# Adreno phones got a Mesa with the kgsl driver (see firstrun.sh): OpenGL on the GPU.
+[ -e "$ROOTFS/etc/pocket-linux-mesa-kgsl" ] && [ ! -e "$HOME/.termux/no-gpu" ] &&
+  GUEST_ENV+=(MESA_LOADER_DRIVER_OVERRIDE=kgsl)
+
 FAST="$PREFIX/libexec/proroot/libproroot.so"
 if [ -e "$HOME/.termux/debian-fast" ] && [ -x "$FAST" ]; then
   # proroot has fake root (-0) but no user switching: without -0 the program runs with the app's

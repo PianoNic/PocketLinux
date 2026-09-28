@@ -98,6 +98,19 @@ echo 'Synaptic { showWelcomeDialog "0"; };' > /root/.synaptic/synaptic.conf
 apt-get clean
 touch /etc/pocket-linux-debian
 DEBIAN
+  # Adreno phones: Mesa with the kgsl driver (github.com/lfdevs/mesa-for-android-container), so
+  # OpenGL apps in Debian run on the GPU (glxgears on the S25 Ultra: 1441 FPS, 563 in software).
+  # Other GPUs keep Debian's software OpenGL. Chromium and Electron apps stay in software either
+  # way, from Chromium 148 on they cannot reach the GPU from inside proot.
+  MESA_KGSL=mesa-for-android-container_26.3.0-devel-20260824_debian_trixie_arm64.tar.gz
+  if [ -e /dev/kgsl-3d0 ] && [ ! -e "$DEBIAN_ROOTFS/etc/pocket-linux-mesa-kgsl" ]; then
+    curl -fsSL -o "$PREFIX/tmp/mesa-kgsl.tar.gz" \
+      "https://github.com/lfdevs/mesa-for-android-container/releases/download/mesa-26.3.0-devel-20260824/$MESA_KGSL" &&
+    echo "c014cf66bdbff96417ee30d34f006cf51df64ae04893d599711b0b6b73b52ccf  $PREFIX/tmp/mesa-kgsl.tar.gz" | sha256sum -c --quiet &&
+    proot-distro login debian --shared-tmp -- bash -c 'tar -xzf /tmp/mesa-kgsl.tar.gz -C / && ldconfig && touch /etc/pocket-linux-mesa-kgsl' ||
+      warn "Adreno OpenGL for Debian could not be installed, Debian apps use software OpenGL"
+    rm -f "$PREFIX/tmp/mesa-kgsl.tar.gz"
+  fi
   # The Debian user gets this app's user ID (fast mode runs as the real ID) and its home.
   proot-distro login debian -- usermod -o -u "$(id -u)" -d "$HOME" user 2>/dev/null ||
     warn "Debian user could not be updated"

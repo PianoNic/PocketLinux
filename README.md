@@ -64,7 +64,8 @@ optional packs, the setup runs, and XFCE starts.
 - **App store** - Synaptic, to search for and install any of the Termux packages.
 - **Linux apps on request** - an optional Debian 13 with its own app store ("Linux Apps", 68,000
   packages) for everything Termux does not package, such as VS Code or `.deb` downloads. Its apps
-  appear in the start menu and use the same look as the desktop. One switch at setup, or
+  appear in the start menu and use the same look as the desktop. On Adreno phones their OpenGL runs on
+  the GPU (Mesa's kgsl driver from [mesa-for-android-container](https://github.com/lfdevs/mesa-for-android-container)). One switch at setup, or
   `desktop-setup --distro` later. `debian-fast on` makes them much faster (see below).
 - **Dev tools on request** - Node, Angular CLI, Python, clang, Rust, code-server and **.NET 10**
   (`dotnet new`, `build` and `run` work). One switch at setup, or `desktop-setup --dev` later.

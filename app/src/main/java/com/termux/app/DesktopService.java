@@ -53,6 +53,14 @@ public class DesktopService extends Service {
                 new File(TermuxConstants.TERMUX_PREFIX_DIR_PATH, "var/desktop-apk"))) {
             w.write(getApplicationInfo().sourceDir);
         } catch (Exception ignored) { }
+        // The phone's name ("Galaxy S25 Ultra", or what the user renamed it to) is the desktop
+        // user's display name, see bin/desktop.
+        String name = android.provider.Settings.Global.getString(getContentResolver(), "device_name");
+        if (name == null || name.isEmpty()) name = Build.MODEL;
+        try (java.io.FileWriter w = new java.io.FileWriter(
+                new File(TermuxConstants.TERMUX_PREFIX_DIR_PATH, "var/device-name"))) {
+            w.write(name);
+        } catch (Exception ignored) { }
     }
 
     @Override

@@ -334,6 +334,9 @@ public class BootActivity extends Activity {
             // glibc preload library for .NET (redirects its hardcoded /tmp); set up by bin/dotnet.
             try { copyAsset("desktop/libtmp-redirect.so", new File(libexec, "libtmp-redirect.so")); }
             catch (Exception ignored) { } // built without the cross compiler
+            // Preload library that shows the phone's name instead of u0_a123; set up by bin/desktop.
+            try { copyAsset("desktop/libdevice-name.so", new File(libexec, "libdevice-name.so")); }
+            catch (Exception ignored) { } // built without the NDK
             File aptConf = new File(PREFIX, "etc/apt/apt.conf.d");
             aptConf.mkdirs();
             copyAsset("desktop/apt-relocate.conf", new File(aptConf, "99-pocket-relocate.conf"));

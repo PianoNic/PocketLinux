@@ -109,8 +109,9 @@ q -c xfce4-panel -p /plugins/plugin-5/digital-layout -n -t uint -s 3
 q -c xfce4-panel -p /plugins/plugin-5/digital-time-format -n -t string -s "%H:%M"
 q -c xfce4-panel -p /plugins/plugin-5/digital-date-format -n -t string -s "%d.%m.%Y"
 
-# Whisker Menu: Kickoff-like
+# Whisker Menu: Kickoff-like, with the Pocket Linux logo as the user picture.
 mkdir -p "$HOME/.config/xfce4/panel"
+[ -e "$HOME/.face" ] || cp "$PREFIX/share/pocket-linux/menu-icon.svg" "$HOME/.face" 2>/dev/null
 cat > "$HOME/.config/xfce4/panel/whiskermenu-1.rc" <<RC
 button-icon=$PREFIX/share/pocket-linux/menu-icon.svg
 button-single-row=false

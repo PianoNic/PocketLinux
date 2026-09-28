@@ -12,6 +12,34 @@ allprojects {
     repositories {
         google()
         mavenCentral()
-        maven { url "https://jitpack.io" }
+        maven { url = "https://jitpack.io" }
+    }
+}
+
+// Termux:X11 (external/termux-x11) is vendored upstream code, so it is adjusted from here
+// instead of being patched. Only arm64-v8a is shipped, so only that ABI is built. Its X server
+// and library sources produce warnings we would never fix upstream, so they are turned off
+// with -w, which (unlike -Wno-*) also wins over the -W flags its CMake scripts add later.
+project(':lorie') {
+    pluginManager.withPlugin('com.android.library') {
+        androidComponents.finalizeDsl { android ->
+            android.defaultConfig.ndk.abiFilters.clear()
+            android.defaultConfig.ndk.abiFilters.add('arm64-v8a')
+            android.defaultConfig.externalNativeBuild.cmake.cFlags.add('-w')
+            android.defaultConfig.externalNativeBuild.cmake.cppFlags.add('-w')
+        }
+        tasks.withType(JavaCompile).configureEach {
+            options.compilerArgs += '-XDsuppressNotes'
+        }
+    }
+}
+
+// Its compile-time stub targets Java 8, which JDK 21 warns about.
+project(':shell-loader:stub') {
+    pluginManager.withPlugin('com.android.library') {
+        androidComponents.finalizeDsl { android ->
+            android.compileOptions.sourceCompatibility = JavaVersion.VERSION_11
+            android.compileOptions.targetCompatibility = JavaVersion.VERSION_11
+        }
     }
 }

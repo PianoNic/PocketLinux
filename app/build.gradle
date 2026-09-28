@@ -13,7 +13,7 @@ ext {
 }
 
 android {
-    namespace "com.termux"
+    namespace = "com.termux"
 
     compileSdkVersion project.properties.compileSdkVersion.toInteger()
     ndkVersion = System.getenv("JITPACK_NDK_VERSION") ?: project.properties.ndkVersion
@@ -100,28 +100,28 @@ android {
             // No shrinking: the X server is started through app_process by class name,
             // and the Termux/Termux:X11 code uses reflection in several places.
             minifyEnabled false
-            shrinkResources false
-            signingConfig releaseKey.file ? signingConfigs.release : signingConfigs.debug
+            shrinkResources = false
+            signingConfig = releaseKey.file ? signingConfigs.release : signingConfigs.debug
         }
 
         debug {
-            signingConfig signingConfigs.debug
+            signingConfig = signingConfigs.debug
         }
     }
 
     compileOptions {
         // Flag to enable support for the new language APIs
-        coreLibraryDesugaringEnabled true
+        coreLibraryDesugaringEnabled = true
 
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
     }
 
 
     lint {
         disable 'ProtectedPermissions'
         // Release lint trips over the Kotlin metadata of the bundled Termux:X11 library.
-        checkReleaseBuilds false
+        checkReleaseBuilds = false
     }
 
     testOptions {
@@ -132,7 +132,7 @@ android {
 
     packagingOptions {
         jniLibs {
-            useLegacyPackaging false   // X server loads libXlorie.so straight from the APK
+            useLegacyPackaging = false   // X server loads libXlorie.so straight from the APK
         }
     }
 
@@ -149,7 +149,7 @@ android {
     }
 
     buildFeatures {
-        buildConfig true
+        buildConfig = true
     }
 }
 

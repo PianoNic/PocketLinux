@@ -63,6 +63,7 @@ public class NotificationUtils {
      * @return Returns the {@link Notification.Builder}.
      */
     @Nullable
+    @SuppressWarnings("deprecation")
     public static Notification.Builder geNotificationBuilder(
         final Context context, final String channelId, final int priority, final CharSequence title,
         final CharSequence notificationText, final CharSequence notificationBigText,
@@ -107,6 +108,7 @@ public class NotificationUtils {
             notificationManager.createNotificationChannel(channel);
     }
 
+    @SuppressWarnings("deprecation")
     public static Notification.Builder setNotificationDefaults(Notification.Builder builder, final int notificationMode) {
 
         // TODO: setDefaults() is deprecated and should also implement setting notification mode via notification channel

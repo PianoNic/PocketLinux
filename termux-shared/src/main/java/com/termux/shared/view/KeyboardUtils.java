@@ -41,6 +41,7 @@ public class KeyboardUtils {
      * default implementation of {@link InputMethodService#onEvaluateInputViewShown()} and returns
      * {@code true}.
      */
+    @SuppressWarnings("deprecation")
     public static void toggleSoftKeyboard(final Context context) {
         if (context == null) return;
         InputMethodManager inputMethodManager = (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -104,6 +105,7 @@ public class KeyboardUtils {
             activity.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
     }
 
+    @SuppressWarnings("deprecation")
     public static void setSoftInputModeAdjustResize(final Activity activity) {
         // TODO: The flag is deprecated for API 30 and WindowInset API should be used
         // https://developer.android.com/reference/android/view/WindowManager.LayoutParams#SOFT_INPUT_ADJUST_RESIZE

@@ -493,6 +493,7 @@ public final class ExtraKeysView extends GridLayout {
             mExtraKeysViewClient.onExtraKeyButtonClick(view, buttonInfo, button);
     }
 
+    @SuppressWarnings("deprecation")
     public void performExtraKeyButtonHapticFeedback(View view, ExtraKeyButton buttonInfo, MaterialButton button) {
         if (mExtraKeysViewClient != null) {
             // If client handled the feedback, then just return

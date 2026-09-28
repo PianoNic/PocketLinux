@@ -36,6 +36,7 @@ public class SharedPreferenceUtils {
      * @return The single {@link SharedPreferences} instance that can be used to retrieve and
      * modify the preference values.
      */
+    @SuppressWarnings("deprecation")
     public static SharedPreferences getPrivateAndMultiProcessSharedPreferences(Context context, String name) {
         return context.getSharedPreferences(name, Context.MODE_PRIVATE | Context.MODE_MULTI_PROCESS);
     }

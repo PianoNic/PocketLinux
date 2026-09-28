@@ -216,6 +216,7 @@ public abstract class TermuxSharedProperties {
     }
 
     @NonNull
+    @SuppressWarnings("deprecation")
     public static Properties replaceUseBlackUIProperty(@NonNull Properties properties) {
         String useBlackUIStringValue = properties.getProperty(TermuxPropertyConstants.KEY_USE_BLACK_UI);
         if (useBlackUIStringValue == null) return properties;

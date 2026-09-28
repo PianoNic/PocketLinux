@@ -97,6 +97,7 @@ public class ActivityUtils {
      *                               Note that later is deprecated.
      * @return Returns the {@code error} if starting activity was not successful, otherwise {@code null}.
      */
+    @SuppressWarnings("deprecation")
     public static Error startActivityForResult(Context context, int requestCode, @NonNull Intent intent,
                                                boolean logErrorMessage, boolean showErrorMessage,
                                                @Nullable ActivityResultLauncher<Intent> activityResultLauncher) {

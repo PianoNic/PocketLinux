@@ -427,6 +427,7 @@ public class BootActivity extends Activity {
 
     // ---- UI -------------------------------------------------------------------------------
 
+    @SuppressWarnings("deprecation")   // bar colors, still needed below Android 15
     private void buildUi() {
         setContentView(R.layout.activity_boot);
         mRoot = findViewById(R.id.boot_root);
@@ -628,7 +629,7 @@ public class BootActivity extends Activity {
 
         @Override public void setAlpha(int alpha) { mPaint.setAlpha(alpha); }
         @Override public void setColorFilter(ColorFilter cf) { mPaint.setColorFilter(cf); }
-        @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
+        @SuppressWarnings("deprecation") @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
     }
 
     private void showButtons(String primary, View.OnClickListener p, String secondary, View.OnClickListener s) {

@@ -505,6 +505,7 @@ public class PackageUtils {
      * @return Returns the {@code versionCode}. This will be {@code null} if an exception is raised.
      */
     @Nullable
+    @SuppressWarnings("deprecation")
     public static Integer getVersionCodeForPackage(@Nullable final PackageInfo packageInfo) {
         return packageInfo != null ? packageInfo.versionCode : null;
     }
@@ -567,6 +568,7 @@ public class PackageUtils {
      * @return Returns the {@code SHA-256 digest}. This will be {@code null} if an exception is raised.
      */
     @Nullable
+    @SuppressWarnings("deprecation")
     public static String getSigningCertificateSHA256DigestForPackage(@NonNull final Context context, @NonNull final String packageName) {
         try {
             /*

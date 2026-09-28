@@ -420,6 +420,7 @@ public class TermuxPluginUtils {
      * @return Returns the {@link Notification.Builder}.
      */
     @Nullable
+    @SuppressWarnings("deprecation")
     public static Notification.Builder getPluginCommandErrorsNotificationBuilder(final Context currentPackageContext,
                                                                                  final Context termuxPackageContext,
                                                                                  final CharSequence title,

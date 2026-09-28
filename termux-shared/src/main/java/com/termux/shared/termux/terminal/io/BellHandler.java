@@ -16,6 +16,7 @@ public class BellHandler {
 
     private static final String LOG_TAG = "BellHandler";
 
+    @SuppressWarnings("deprecation")
     public static BellHandler getInstance(Context context) {
         if (instance == null) {
             synchronized (lock) {
@@ -38,6 +39,7 @@ public class BellHandler {
     private BellHandler(final Vibrator vibrator) {
         bellRunnable = new Runnable() {
             @Override
+            @SuppressWarnings("deprecation")
             public void run() {
                 if (vibrator != null) {
                     try {

@@ -2,6 +2,7 @@ package com.termux.terminal;
 
 import android.annotation.SuppressLint;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.Message;
 import android.system.ErrnoException;
 import android.system.Os;
@@ -337,6 +338,10 @@ public final class TerminalSession extends TerminalOutput {
     class MainThreadHandler extends Handler {
 
         final byte[] mReceiveBuffer = new byte[64 * 1024];
+
+        MainThreadHandler() {
+            super(Looper.getMainLooper());
+        }
 
         @Override
         public void handleMessage(Message msg) {

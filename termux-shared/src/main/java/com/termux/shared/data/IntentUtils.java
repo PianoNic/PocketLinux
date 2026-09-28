@@ -116,6 +116,7 @@ public class IntentUtils {
         return intent.toString() + "\n" + getBundleString(intent.getExtras());
     }
 
+    @SuppressWarnings("deprecation")
     public static String getBundleString(Bundle bundle) {
         if (bundle == null || bundle.size() == 0) return "Bundle[]";
 

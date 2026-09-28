@@ -99,6 +99,7 @@ public class TextIOActivity extends AppCompatActivity {
     }
 
     @SuppressLint("ClickableViewAccessibility")
+    @SuppressWarnings("deprecation")
     private void updateUI() {
         if (mBundle == null) {
             finish(); return;
@@ -233,6 +234,7 @@ public class TextIOActivity extends AppCompatActivity {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public void onBackPressed() {
         confirm();
     }

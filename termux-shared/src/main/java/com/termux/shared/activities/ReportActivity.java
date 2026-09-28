@@ -108,6 +108,7 @@ public class ReportActivity extends AppCompatActivity {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private void updateUI() {
 
         if (mBundle == null) {
@@ -204,6 +205,7 @@ public class ReportActivity extends AppCompatActivity {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public void onBackPressed() {
         // Remove activity from recents menu on back button press
         finishAndRemoveTask();

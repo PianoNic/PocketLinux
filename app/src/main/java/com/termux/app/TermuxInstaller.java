@@ -279,6 +279,7 @@ final class TermuxInstaller {
             true, false, TermuxUtils.AppInfoMode.TERMUX_AND_PLUGIN_PACKAGES, true);
     }
 
+    @SuppressWarnings("deprecation") // getExternalMediaDirs, still the way for Android 7 to 10
     static void setupStorageSymlinks(final Context context) {
         final String LOG_TAG = "termux-storage";
         final String title = TermuxConstants.TERMUX_APP_NAME + " Setup Storage Error";

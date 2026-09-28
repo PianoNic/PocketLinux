@@ -144,7 +144,7 @@ public class DesktopService extends Service {
             }
             run(TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/desktop", "--stop");
             sDesktopRunning = false;
-            stopForeground(true);
+            stopForeground(STOP_FOREGROUND_REMOVE);
             stopSelf();
         }).start();
     }
@@ -186,6 +186,7 @@ public class DesktopService extends Service {
         }
     }
 
+    @SuppressWarnings("deprecation")   // Builder(Context) for Android 7, icon-less addAction
     private Notification buildNotification(String text) {
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && nm.getNotificationChannel(CHANNEL_ID) == null) {

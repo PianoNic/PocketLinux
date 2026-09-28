@@ -382,6 +382,7 @@ public class TermuxCrashUtils implements CrashHandler.CrashHandlerClient {
      * @return Returns the {@link Notification.Builder}.
      */
     @Nullable
+    @SuppressWarnings("deprecation")
     public static Notification.Builder getCrashReportsNotificationBuilder(final Context currentPackageContext,
                                                                           final Context termuxPackageContext,
                                                                           final CharSequence title,

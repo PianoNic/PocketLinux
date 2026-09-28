@@ -30,7 +30,26 @@ Under the hood it is [Termux](https://github.com/termux/termux-app) with
 and running on the regular Termux package repositories.
 
 <p align="center">
-  <img src="assets/screenshot.png" alt="Pocket Linux in landscape: Firefox and a terminal on the XFCE desktop" />
+  <img src="assets/screenshots/desktop.jpg" alt="Pocket Linux in landscape: Firefox and a terminal on the XFCE desktop" />
+</p>
+
+## Screenshots
+
+From opening the app to the desktop, on a Galaxy S25 Ultra: the system downloads, you pick the
+optional packs, the setup runs, and XFCE starts.
+
+<p align="center">
+  <img src="assets/screenshots/setup-download.jpg" width="24%" alt="Downloading the pre-installed system" />
+  <img src="assets/screenshots/setup-welcome.jpg" width="24%" alt="Welcome screen with the optional packs" />
+  <img src="assets/screenshots/setup-progress.jpg" width="24%" alt="Setup running, step 4 of 5" />
+  <img src="assets/screenshots/desktop-portrait.jpg" width="24%" alt="The XFCE desktop in portrait" />
+</p>
+<p align="center">
+  <img src="assets/screenshots/home-menu.jpg" width="49%" alt="The home button's menu with all apps" />
+  <img src="assets/screenshots/linux-apps.jpg" width="49%" alt="Linux Apps, the Debian app store" />
+</p>
+<p align="center">
+  <img src="assets/screenshots/vscode.jpg" width="49%" alt="The official VS Code, installed from its .deb" />
 </p>
 
 ## Features

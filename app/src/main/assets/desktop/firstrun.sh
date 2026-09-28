@@ -18,16 +18,30 @@ export DEBIAN_FRONTEND=noninteractive
 # Keep the default mirror (packages-cf.termux.dev, behind Cloudflare, fast everywhere). Otherwise
 # pkg tests ~40 mirrors and picks a random one, often on another continent.
 export TERMUX_PKG_NO_MIRROR_SELECT=1
+# A readable log: no progress bars (they end up as one long line of redraws in a file) and no
+# "apt does not have a stable CLI interface" warning on every pkg call.
+printf '%s\n' 'quiet "1";' 'Apt::Cmd::Disable-Script-Warning "true";' 'Dpkg::Use-Pty "0";' > "$PREFIX/tmp/apt-setup.conf"
+export APT_CONFIG="$PREFIX/tmp/apt-setup.conf"
 APT_OPTS='-y -o Dpkg::Options::=--force-confnew -o Dpkg::Options::=--force-confdef'
-pkgi() { yes | pkg install $APT_OPTS "$@"; }
+# Installs only what is missing: on the pre-installed system (see scripts/build-system-image.sh)
+# most calls then have nothing to do.
+pkgi() {
+  local missing=() p
+  for p in "$@"; do dpkg -s "$p" >/dev/null 2>&1 || missing+=("$p"); done
+  [ ${#missing[@]} -eq 0 ] || yes 2>/dev/null | pkg install $APT_OPTS "${missing[@]}"
+}
 
-step "Termux Desktop setup (takes ~10-20 min, keep the app open)"
+step "Pocket Linux setup (keep the app open)"
 
-step "Updating packages"
-yes | pkg update $APT_OPTS || { warn "pkg update failed, retrying once"; sleep 3; yes | pkg update $APT_OPTS; }
-yes | pkg upgrade $APT_OPTS
-pkgi x11-repo tur-repo glibc-repo
-yes | pkg update $APT_OPTS
+# The pre-installed system is at most a week old and brings its package lists, so its
+# packages are not updated now (pkg upgrade does that later).
+if [ ! -e "$PREFIX/etc/pocket-linux-system" ]; then
+  step "Updating packages"
+  yes 2>/dev/null | pkg update $APT_OPTS || { warn "pkg update failed, retrying once"; sleep 3; yes 2>/dev/null | pkg update $APT_OPTS; }
+  yes 2>/dev/null | pkg upgrade $APT_OPTS
+  pkgi x11-repo tur-repo glibc-repo
+  yes 2>/dev/null | pkg update $APT_OPTS
+fi
 
 step "Desktop: XFCE + audio (the display is built into the app)"
 pkgi xkeyboard-config xfce4 xfce4-terminal pulseaudio dbus firefox synaptic || warn "some desktop packages failed"

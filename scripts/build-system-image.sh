@@ -19,7 +19,8 @@ trap 'docker rm -f "$NAME" >/dev/null 2>&1; rm -rf "$WORK"' EXIT
 
 docker run --platform linux/arm64 --name "$NAME" -v "$ROOT/app/src/main/assets/desktop:/src:ro" \
   termux/termux-docker:aarch64 bash -c "set -e; $SETUP
-    apt-get clean; rm -rf \$PREFIX/var/lib/apt/lists/* \$PREFIX/tmp/*"
+    apt-get clean; rm -rf \$PREFIX/tmp/*
+    date -u +%F > \$PREFIX/etc/pocket-linux-system"   # tells firstrun.sh it runs on this system
 docker cp "$NAME:/data/data/com.termux/files/usr" "$WORK/usr"
 
 mkdir -p "$(dirname "$OUT")"

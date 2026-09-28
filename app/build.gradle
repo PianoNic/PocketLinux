@@ -52,8 +52,11 @@ android {
             versionCode = maj * 1000000 + min * 1000 + pat
         }
 
-        // Pre-installed system for the first start (release CI sets these, see TermuxInstaller).
-        buildConfigField "String", "POCKET_SYSTEM_URL", "\"" + (System.getenv("POCKET_SYSTEM_URL") ?: "") + "\""
+        // Pre-installed system for the first start (see TermuxInstaller). Release CI pins its own
+        // copy, every other build uses the weekly one (.github/workflows/system-image.yml).
+        def systemUrl = System.getenv("POCKET_SYSTEM_URL") ?:
+            "https://github.com/PianoNic/PocketLinux/releases/download/system/pocket-linux-system-aarch64.zip"
+        buildConfigField "String", "POCKET_SYSTEM_URL", "\"" + systemUrl + "\""
         buildConfigField "String", "POCKET_SYSTEM_SHA256", "\"" + (System.getenv("POCKET_SYSTEM_SHA256") ?: "") + "\""
         buildConfigField "String", "TERMUX_PACKAGE_VARIANT", "\"" + project.ext.packageVariant + "\"" // Used by TermuxApplication class
 

@@ -1,0 +1,41 @@
+name: System image
+
+# The pre-installed system that every non-release build downloads on first start (see
+# scripts/build-system-image.sh). Published as the "system" pre-release, which is replaced on
+# every run. Rebuilt weekly so the packages stay fresh, and whenever the setup changes.
+on:
+  schedule:
+    - cron: '0 3 * * 1'   # Mondays 03:00 UTC
+  push:
+    branches: [ main ]
+    paths:
+      - app/src/main/assets/desktop/firstrun.sh
+      - scripts/build-system-image.sh
+  workflow_dispatch:
+
+permissions:
+  contents: write   # publish the "system" release
+
+concurrency:
+  group: system-image
+  cancel-in-progress: true
+
+jobs:
+  system-image:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build the system image
+        run: bash scripts/build-system-image.sh
+
+      - name: Publish it as the "system" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view system >/dev/null 2>&1 ||
+            gh release create system --prerelease --latest=false --title "System image" \
+              --notes "Pre-installed system for Pocket Linux test builds, rebuilt weekly. Not an app release."
+          # The checksum goes up last, so a phone never sees a new checksum with the old zip.
+          gh release upload system dist/pocket-linux-system-aarch64.zip --clobber
+          gh release upload system dist/pocket-linux-system-aarch64.zip.sha256 --clobber

@@ -391,14 +391,31 @@ final class TermuxInstaller {
 
     private static File downloadSystem(Context context) throws Exception {
         File target = new File(context.getCacheDir(), "system.zip");
-        if (!com.termux.BuildConfig.POCKET_SYSTEM_URL.isEmpty()) {
+        String url = com.termux.BuildConfig.POCKET_SYSTEM_URL;
+        if (!url.isEmpty()) {
             try {
-                return download(com.termux.BuildConfig.POCKET_SYSTEM_URL, com.termux.BuildConfig.POCKET_SYSTEM_SHA256, target);
+                // Release builds pin the checksum. Other builds use the weekly image and read
+                // its checksum from the file published next to it.
+                String sha256 = com.termux.BuildConfig.POCKET_SYSTEM_SHA256;
+                if (sha256.isEmpty()) sha256 = fetchText(url + ".sha256").trim();
+                return download(url, sha256, target);
             } catch (IOException e) {
                 Logger.logStackTraceWithMessage(LOG_TAG, "Pre-installed system not available, using the Termux bootstrap", e);
             }
         }
         return download(BOOTSTRAP_URL, BOOTSTRAP_SHA256, target);
+    }
+
+    private static String fetchText(String url) throws IOException {
+        java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
+        c.setInstanceFollowRedirects(true);
+        c.setConnectTimeout(20000);
+        c.setReadTimeout(20000);
+        try (BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream()))) {
+            String line = r.readLine();
+            if (line == null) throw new IOException("Empty checksum file: " + url);
+            return line;
+        }
     }
 
     /** Downloads to a file (the pre-installed system is too big to hold in memory). */

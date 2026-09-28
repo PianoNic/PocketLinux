@@ -90,10 +90,12 @@ Keep LF line endings (`.gitattributes` does that): the X server's patches do not
 builds the APK with that version, signs it and attaches it to the release. Tags must keep going up,
 `versionCode` is `major*1000000 + minor*1000 + patch`.
 
-The release also builds the pre-installed system (`scripts/build-system-image.sh`): the app's own
-first-run setup, run inside the Termux Docker image on an arm64 runner and packed like a Termux
-bootstrap. The release APK downloads it on first start. Builds without one fall back to the plain
-Termux bootstrap and install the desktop package by package.
+The pre-installed system (`scripts/build-system-image.sh`) is the app's own first-run setup, run
+inside the Termux Docker image on an arm64 runner and packed like a Termux bootstrap, so a phone
+only downloads and unpacks it. Every release gets its own copy, pinned by checksum. All other
+builds use the `system` pre-release, rebuilt weekly and whenever the setup changes
+(`.github/workflows/system-image.yml`). Without it the app falls back to the plain Termux
+bootstrap and installs the desktop package by package.
 
 Signing uses the repo secrets `POCKET_KEYSTORE_BASE64`, `POCKET_KEYSTORE_PASSWORD`,
 `POCKET_KEY_ALIAS` and `POCKET_KEY_PASSWORD`, locally a `keystore.properties` in the repo root

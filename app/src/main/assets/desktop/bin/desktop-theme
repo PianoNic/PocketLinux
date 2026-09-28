@@ -128,7 +128,13 @@ menu-height=560
 category-icon-size=1
 item-icon-size=2
 view-mode=1
+favorites=xfce4-web-browser.desktop,xfce4-file-manager.desktop,xfce4-terminal-emulator.desktop,synaptic.desktop
 RC
+
+# Synaptic: straight to the package list, without its introduction dialog.
+mkdir -p "$HOME/.synaptic"
+[ -e "$HOME/.synaptic/synaptic.conf" ] ||
+  echo 'Synaptic { showWelcomeDialog "0"; };' > "$HOME/.synaptic/synaptic.conf"
 
 xfce4-panel -r >/dev/null 2>&1 &
 sleep 1

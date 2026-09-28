@@ -62,6 +62,7 @@ if [ -e "$HOME/.termux/dev-tools" ]; then
   pkgi nodejs-lts python clang make cmake rust || warn "some dev tools failed"
   npm install -g @angular/cli pnpm || warn "npm globals failed"
   pkgi code-server 2>/dev/null || warn "code-server not available right now"
+  pkgi code-oss 2>/dev/null || warn "VS Code (code-oss) not available right now"
 
   step ".NET SDK via glibc-runner (experimental)"
   if pkgi glibc glibc-runner libicu-glibc; then   # ICU: .NET aborts without it

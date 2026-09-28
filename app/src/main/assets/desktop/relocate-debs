@@ -60,9 +60,12 @@ relocate_deb() {
   # No compression: the package is installed right away and not kept around.
   # --nocheck: some upstream packages have quirks dpkg accepts on install but dpkg-deb
   # rejects on build (e.g. glibc lists the conffile "gai.conf," with a trailing comma).
-  dpkg-deb --root-owner-group --nocheck -Znone -b "$t/p" "$t/new.deb" >/dev/null &&
+  # dpkg-deb warns about --nocheck on every package, that line is dropped from the log.
+  local err rc
+  err=$(dpkg-deb --root-owner-group --nocheck -Znone -b "$t/p" "$t/new.deb" 2>&1 >/dev/null) &&
     mv -f "$t/new.deb" "$deb"
-  local rc=$?
+  rc=$?
+  printf '%s\n' "$err" | grep -v -e '^$' -e 'not checking contents of control area' >&2
   rm -rf "$t"
   return $rc
 }

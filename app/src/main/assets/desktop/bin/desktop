@@ -70,7 +70,8 @@ gpu_mode() {
   if [ $GPU = 1 ]; then
     unset LIBGL_ALWAYS_SOFTWARE
     export MESA_LOADER_DRIVER_OVERRIDE=zink GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy TU_DEBUG=noconform,sysmem
-    VBLANK=auto COMPOSITE=true
+    # vsync through OpenGL crashes xfwm4 on Zink (no GL context in libepoxy), XRender is fine.
+    VBLANK=off COMPOSITE=true
   else
     unset MESA_LOADER_DRIVER_OVERRIDE ZINK_DESCRIPTORS TU_DEBUG
     export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
@@ -240,7 +241,9 @@ if ! xfce_alive; then
   nohup dbus-launch --exit-with-session startxfce4 >>"$TMPDIR/xfce.log" 2>&1 &
   # First start: apply the Plasma-like Breeze look once the session is up.
   if [ ! -e "$HOME/.termux/theme-applied" ] && command -v desktop-theme >/dev/null; then
-    ( sleep 8 && desktop-theme dark >>"$TMPDIR/theme.log" 2>&1 &&
+    # Only once the panel and xfdesktop run, otherwise they start after it with their defaults.
+    ( for i in $(seq 1 90); do pgrep -x xfce4-panel >/dev/null && pgrep -x xfdesktop >/dev/null && break; sleep 1; done
+      sleep 3 && desktop-theme dark >>"$TMPDIR/theme.log" 2>&1 &&
       touch "$HOME/.termux/theme-applied" ) </dev/null >/dev/null 2>&1 &
   fi
 fi

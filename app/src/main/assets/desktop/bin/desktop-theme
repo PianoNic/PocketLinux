@@ -24,7 +24,8 @@ if [ ! -d "$HOME/.icons/breeze_cursors" ]; then
   say "Extracting Breeze cursors"
   tmp=$(mktemp -d "$TMPDIR/breeze.XXXX")
   ( cd "$tmp" && apt-get download breeze >/dev/null 2>&1 && dpkg-deb -x breeze_*.deb x ) &&
-    mkdir -p "$HOME/.icons" && cp -r "$tmp/x$PREFIX/share/icons/breeze_cursors" "$HOME/.icons/"
+    # A downloaded package still has Termux's own paths inside (only installs go through the apt hook).
+    mkdir -p "$HOME/.icons" && cp -r "$tmp"/x/data/data/*/files/usr/share/icons/breeze_cursors "$HOME/.icons/"
   rm -rf "$tmp"
 fi
 CURSOR=breeze_cursors; [ -d "$HOME/.icons/breeze_cursors" ] || CURSOR=Adwaita

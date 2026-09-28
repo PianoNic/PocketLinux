@@ -128,7 +128,7 @@ menu-height=560
 category-icon-size=1
 item-icon-size=2
 view-mode=1
-favorites=xfce4-web-browser.desktop,xfce4-file-manager.desktop,xfce4-terminal-emulator.desktop,synaptic.desktop
+favorites=xfce4-web-browser.desktop,xfce4-file-manager.desktop,xfce4-terminal-emulator.desktop,debian-synaptic.desktop
 RC
 
 # Synaptic: straight to the package list, without its introduction dialog.

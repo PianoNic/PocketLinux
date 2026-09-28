@@ -1,0 +1,36 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# debian-run [--root] [PROGRAM [ARGS]]: runs a program from the Debian system on the desktop, or
+# a Debian shell without one. Programs run as the Debian user "user", whose home is this app's
+# home (same path inside and outside, so files and theme settings are shared). --root is for
+# Synaptic, gdebi and apt.
+#
+# Normally Debian runs through proot. With fast mode on (see debian-fast) it runs through
+# proroot, which is much faster but closed source, so it stays optional.
+set -u
+ROOTFS="$PREFIX/var/lib/proot-distro/containers/debian/rootfs"
+[ -d "$ROOTFS" ] || { echo "Debian is not installed, run: desktop-setup" >&2; exit 1; }
+AS_ROOT=0; [ "${1:-}" = --root ] && { AS_ROOT=1; shift; }
+[ $# -gt 0 ] || set -- bash -l
+
+if [ $AS_ROOT = 1 ]; then GUEST_HOME=/root GUEST_USER=root; else GUEST_HOME="$HOME" GUEST_USER=user; fi
+GUEST_ENV=(DISPLAY="${DISPLAY:-:0}" PULSE_SERVER=127.0.0.1 XDG_RUNTIME_DIR=/tmp LANG="${LANG:-C.UTF-8}"
+           HOME="$GUEST_HOME" USER="$GUEST_USER" TERM="${TERM:-xterm-256color}"
+           NO_AT_BRIDGE=1 GTK_A11Y=none   # GTK otherwise waits 25 s for an accessibility bus
+           PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin)
+
+FAST="$PREFIX/libexec/proroot/libproroot.so"
+if [ -e "$HOME/.termux/debian-fast" ] && [ -x "$FAST" ]; then
+  # proroot has fake root (-0) but no user switching: without -0 the program runs with the app's
+  # real user ID, which the setup gave to the Debian user.
+  ROOT_OPT=(); [ $AS_ROOT = 1 ] && ROOT_OPT=(-0)
+  mkdir -p "$ROOTFS$HOME"   # proroot binds only onto existing directories
+  exec env -i "${GUEST_ENV[@]}" PROROOT_TMP_DIR="$PREFIX/tmp" "$FAST" -r "$ROOTFS" "${ROOT_OPT[@]}" \
+    --link2symlink -b /dev:/dev -b /proc:/proc -b /sys:/sys -b "$PREFIX/tmp:/tmp" -b "$HOME:$HOME" \
+    -w "$GUEST_HOME" "$@"
+fi
+
+USER_OPT=(); [ $AS_ROOT = 1 ] || USER_OPT=(--user user)
+ENV_OPT=(); for e in "${GUEST_ENV[@]}"; do ENV_OPT+=(-e "$e"); done
+# proot-distro shares this app's home at the same path by itself.
+exec proot-distro login debian "${USER_OPT[@]}" --shared-tmp -w "$GUEST_HOME" \
+  "${ENV_OPT[@]}" -- "$@"

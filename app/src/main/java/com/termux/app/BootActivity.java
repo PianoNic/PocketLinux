@@ -72,6 +72,7 @@ public class BootActivity extends Activity {
     private static final File X11_APK = new File(PREFIX, "tmp/termux-x11.apk");
     /** firstrun.sh also installs the developer tools when this file exists. */
     private static final File DEV_TOOLS = new File(HOME, ".termux/dev-tools");
+    private static final File DISTRO = new File(HOME, ".termux/distro");
 
     private enum State { INSTALLING, WELCOME, SETUP, NEED_X11, KILLER_WARNING, BOOTING, RUNNING, FAILED, LOGS }
 
@@ -83,11 +84,11 @@ public class BootActivity extends Activity {
 
     private TextView mTitle, mStatus, mLog;
     private ScrollView mLogScroll;
-    private View mProgress, mLogCard, mDevCard, mShape, mBackdrop, mContent;
+    private View mProgress, mLogCard, mDevCard, mDistroCard, mShape, mBackdrop, mContent;
     private LinearLayout mRoot;
     private MaterialCardView mHero;
     private ImageView mLogo;
-    private MaterialSwitch mDevSwitch;
+    private MaterialSwitch mDevSwitch, mDistroSwitch;
     private Button mPrimary, mSecondary, mLogsButton;
     private MorphDrawable mMorph;
     private ObjectAnimator mSpin, mDrift;
@@ -255,16 +256,22 @@ public class BootActivity extends Activity {
         next();
     }
 
+    /** The optional packs chosen on the boot screen, read by firstrun.sh. */
     private void applyDevTools() {
+        setFlag(DEV_TOOLS, mDevSwitch.isChecked());
+        setFlag(DISTRO, mDistroSwitch.isChecked());
+    }
+
+    private static void setFlag(File flag, boolean on) {
         try {
-            if (mDevSwitch.isChecked()) {
+            if (on) {
                 //noinspection ResultOfMethodCallIgnored
-                DEV_TOOLS.getParentFile().mkdirs();
+                flag.getParentFile().mkdirs();
                 //noinspection ResultOfMethodCallIgnored
-                DEV_TOOLS.createNewFile();
+                flag.createNewFile();
             } else {
                 //noinspection ResultOfMethodCallIgnored
-                DEV_TOOLS.delete();
+                flag.delete();
             }
         } catch (Exception ignored) {
         }
@@ -441,6 +448,8 @@ public class BootActivity extends Activity {
         mProgress = findViewById(R.id.boot_progress);
         mDevCard = findViewById(R.id.boot_dev_card);
         mDevSwitch = findViewById(R.id.boot_dev_switch);
+        mDistroCard = findViewById(R.id.boot_distro_card);
+        mDistroSwitch = findViewById(R.id.boot_distro_switch);
         mLogCard = findViewById(R.id.boot_log_card);
         mLogScroll = findViewById(R.id.boot_log_scroll);
         mLog = findViewById(R.id.boot_log);
@@ -449,6 +458,7 @@ public class BootActivity extends Activity {
         mPrimary = findViewById(R.id.boot_primary);
         mLogsButton.setOnClickListener(v -> showLogs());
         mDevSwitch.setChecked(DEV_TOOLS.exists());
+        mDistroSwitch.setChecked(DISTRO.exists());
 
         int surface = MaterialColors.getColor(mRoot, com.google.android.material.R.attr.colorSurface);
         getWindow().setStatusBarColor(surface);
@@ -518,7 +528,9 @@ public class BootActivity extends Activity {
         boolean log = state == State.SETUP || state == State.FAILED || state == State.LOGS;
         mLogCard.setVisibility(log ? View.VISIBLE : mLand ? View.INVISIBLE : View.GONE);
         relayout();
-        mDevCard.setVisibility(state == State.WELCOME || state == State.FAILED ? View.VISIBLE : View.GONE);
+        int packs = state == State.WELCOME || state == State.FAILED ? View.VISIBLE : View.GONE;
+        mDevCard.setVisibility(packs);
+        mDistroCard.setVisibility(packs);
         mLogsButton.setVisibility(state == State.LOGS || state == State.INSTALLING || state == State.WELCOME ? View.INVISIBLE : View.VISIBLE);
         if (busy) showButtons(null, null, null, null);
         applyLook(state, busy);

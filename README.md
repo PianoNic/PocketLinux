@@ -45,6 +45,10 @@ and running on the regular Termux package repositories.
 - **Plasma look** - Breeze Dark (or light) theme, Plasma's Scarlet Tree wallpaper, one bottom
   panel with a dock-like taskbar.
 - **App store** - Synaptic, to search for and install any of the Termux packages.
+- **Linux apps on request** - an optional Debian 13 with its own app store ("Linux Apps", 68,000
+  packages) for everything Termux does not package, such as VS Code or `.deb` downloads. Its apps
+  appear in the start menu and open in the same Breeze look. One switch at setup, or
+  `desktop-setup --distro` later. `debian-fast on` makes them much faster (see below).
 - **Dev tools on request** - Node, Angular CLI, Python, clang, Rust, code-server and **.NET 10**
   (`dotnet new`, `build` and `run` work). One switch at setup, or `desktop-setup --dev` later.
 - **Survives Android** - stays under Android 12+'s process limit, no developer options needed.
@@ -67,7 +71,9 @@ Updates install over the existing app and keep your files.
 | `desktop-theme dark` / `light` | Reapply the Plasma-like look |
 | `gpu <program>` | Run one program with GPU acceleration, also when the desktop runs on the CPU |
 | `touch ~/.termux/no-gpu` | Keep the desktop on the CPU (remove the file to go back to the GPU) |
-| `desktop-setup [--dev]` | Run the first-start setup again, `--dev` adds the developer tools |
+| `desktop-setup [--dev] [--distro]` | Run the first-start setup again, `--dev` adds the developer tools, `--distro` Debian |
+| `debian-run [--root] <program>` | Run a program from Debian, or a Debian shell without one |
+| `debian-fast on` / `off` | Fast mode for Debian apps (proroot instead of proot) |
 | `displays` / `desktop <id>` | Put the desktop on another display (needs Shizuku) |
 
 <details>
@@ -139,6 +145,11 @@ loader the first time `dotnet` runs.
 
 [GPLv3](LICENSE.md), like [Termux](https://github.com/termux/termux-app) and
 [Termux:X11](https://github.com/termux/termux-x11), which it is built on.
+
+Fast mode for Debian apps uses [proroot](https://github.com/coderredlab/proroot) by coderred,
+which is closed source (free to use, not open source). It is not part of this repository or the
+APK: `debian-fast on` downloads its unmodified release and checks it against pinned checksums.
+Without fast mode, Debian runs on the open source [proot](https://github.com/termux/proot).
 
 ---
 

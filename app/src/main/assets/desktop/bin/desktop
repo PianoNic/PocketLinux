@@ -245,6 +245,13 @@ if ! xfce_alive; then
   fi
 fi
 
+# Debian apps in the start menu: refreshed on every XFCE start and after apt changes in Debian
+# (its apt hook touches this file, see firstrun.sh).
+if [ "$RESTARTED" = 1 ] || [ -e "$TMPDIR/.pocket-apps-changed" ]; then
+  rm -f "$TMPDIR/.pocket-apps-changed"
+  command -v debian-apps >/dev/null && { debian-apps </dev/null >/dev/null 2>&1 & }
+fi
+
 # Job queue: scripts dropped into $PREFIX/var/desktop-jobs run here, in the app's own
 # context (the watchdog calls this script every few seconds). Only the app can write there.
 JOBS="$PREFIX/var/desktop-jobs"

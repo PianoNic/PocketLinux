@@ -1,7 +1,8 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # Termux Desktop: one-time automatic setup, runs on first app start.
 # Installs XFCE (native, no proot), GPU (Turnip + Zink) and the Breeze theme, plus the dev tools
-# and .NET when asked for. Re-run manually any time with: desktop-setup [--dev]
+# and .NET, and Debian for Linux apps when asked for.
+# Re-run manually any time with: desktop-setup [--dev] [--distro]
 
 LOG="$HOME/.termux/desktop-setup.log"
 MARKER="$HOME/.termux/desktop-ready"
@@ -52,11 +53,49 @@ step "GPU acceleration: Turnip (Adreno Vulkan) + Zink (OpenGL on Vulkan)"
 pkgi mesa-vulkan-icd-freedreno vulkan-tools mesa-demos 2>/dev/null || warn "GPU packages failed, desktop falls back to CPU"
 pkgi mesa-zink 2>/dev/null || true
 
+# Optional packs: the boot screen switches or `desktop-setup --dev --distro` set these flags.
+for arg in "$@"; do
+  case "$arg" in
+    --dev) touch "$HOME/.termux/dev-tools" ;;
+    --distro) touch "$HOME/.termux/distro" ;;
+  esac
+done
+
+if [ -e "$HOME/.termux/distro" ]; then
+step "Linux apps: Debian 13 with its app store"
+# Termux packages only what it builds for Android. Debian (through proot, see bin/debian-run) runs
+# nearly everything else for arm64 Linux, and its apps show up in the start menu (bin/debian-apps).
+# Slower than Termux's own packages, so it is an opt-in pack.
+pkgi proot-distro
+DEBIAN_ROOTFS="$PREFIX/var/lib/proot-distro/containers/debian/rootfs"   # also in bin/debian-run
+[ -d "$DEBIAN_ROOTFS" ] || proot-distro install debian:13 || warn "Debian could not be installed"
+if [ -d "$DEBIAN_ROOTFS" ]; then
+  # Done once, in the pre-installed system already.
+  proot-distro login debian -- bash -s <<'DEBIAN' || warn "Debian setup failed, run desktop-setup to retry"
+set -e
+[ -e /etc/pocket-linux-debian ] && exit 0
+export DEBIAN_FRONTEND=noninteractive
+apt-get -qq update
+apt-get -y -qq -o Dpkg::Use-Pty=0 install --no-install-recommends synaptic gdebi librsvg2-common breeze-gtk-theme \
+  breeze-icon-theme breeze-cursor-theme fonts-noto-core xdg-utils dbus-x11 ca-certificates sudo >/dev/null
+id user >/dev/null 2>&1 || useradd -m -s /bin/bash user
+echo 'user ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/user
+# Tells bin/desktop to update the start menu after installs and removals.
+echo 'DPkg::Post-Invoke { "touch /tmp/.pocket-apps-changed 2>/dev/null || true"; };' > /etc/apt/apt.conf.d/99pocket-apps
+mkdir -p /root/.synaptic
+echo 'Synaptic { showWelcomeDialog "0"; };' > /root/.synaptic/synaptic.conf
+apt-get clean
+touch /etc/pocket-linux-debian
+DEBIAN
+  # The Debian user gets this app's user ID (fast mode runs as the real ID) and its home.
+  proot-distro login debian -- usermod -o -u "$(id -u)" -d "$HOME" user 2>/dev/null ||
+    warn "Debian user could not be updated"
+fi
+fi
+
 step "Basic tools"
 pkgi android-tools git openssh neovim ripgrep curl wget unzip || warn "some basic tools failed"
 
-# The big dev tools are optional: the boot screen switch or `desktop-setup --dev` sets this flag.
-[ "${1:-}" = --dev ] && touch "$HOME/.termux/dev-tools"
 if [ -e "$HOME/.termux/dev-tools" ]; then
   step "Dev tools (native)"
   pkgi nodejs-lts python clang make cmake rust || warn "some dev tools failed"

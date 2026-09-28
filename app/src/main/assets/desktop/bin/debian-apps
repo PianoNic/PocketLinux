@@ -1,0 +1,58 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# debian-apps: puts the Debian system's apps into the start menu. Each launcher of Debian's gets a
+# copy in ~/.local/share/applications that starts it through debian-run, with its icon from
+# Debian. Runs when the desktop starts and after every apt or Synaptic change in Debian (its
+# apt hook touches /tmp/.pocket-apps-changed, bin/desktop watches for that).
+set -u
+ROOTFS="$PREFIX/var/lib/proot-distro/containers/debian/rootfs"
+OUT="$HOME/.local/share/applications"
+[ -d "$ROOTFS/usr/share/applications" ] || exit 0
+mkdir -p "$OUT"
+before=$(cat "$OUT"/debian-*.desktop 2>/dev/null | md5sum)
+rm -f "$OUT"/debian-*.desktop
+
+icon() {
+  local n="$1" d e
+  case "$n" in /*) [ -e "$ROOTFS$n" ] && echo "$ROOTFS$n" || echo "$n"; return ;; esac
+  for d in scalable 512x512 256x256 128x128 96x96 64x64 48x48; do
+    for e in svg png; do
+      [ -e "$ROOTFS/usr/share/icons/hicolor/$d/apps/$n.$e" ] && { echo "$ROOTFS/usr/share/icons/hicolor/$d/apps/$n.$e"; return; }
+    done
+  done
+  for e in svg png xpm; do
+    [ -e "$ROOTFS/usr/share/pixmaps/$n.$e" ] && { echo "$ROOTFS/usr/share/pixmaps/$n.$e"; return; }
+  done
+  echo "$n"   # an icon name the Breeze theme may know
+}
+
+for f in "$ROOTFS"/usr/share/applications/*.desktop; do
+  [ -f "$f" ] || continue
+  name=$(basename "$f")
+  root=""
+  case "$name" in synaptic*.desktop|gdebi*.desktop) root="--root " ;; esac
+  i=$(icon "$(sed -n 's/^Icon=//p' "$f" | head -1)")
+  sed -e "s|^Exec=synaptic-pkexec|Exec=synaptic|" \
+      -e "s|^Exec=|Exec=debian-run $root|" -e '/^TryExec=/d' -e "s|^Icon=.*|Icon=$i|" "$f" > "$OUT/debian-$name"
+  # The taskbar matches windows to launchers by window class. The copy's file name no longer
+  # does, so without this its windows get a generic icon.
+  if ! grep -q '^StartupWMClass=' "$OUT/debian-$name"; then
+    prog=$(sed -n 's/^Exec=\([^ ]*\).*/\1/p' "$f" | head -1)
+    [ -n "$prog" ] && sed -i "/^\[Desktop Entry\]/a StartupWMClass=$(basename "$prog")" "$OUT/debian-$name"
+  fi
+done
+
+# The package store gets a clearer name than "Synaptic Package Manager".
+[ -f "$OUT/debian-synaptic.desktop" ] &&
+  sed -i -e 's/^Name=.*/Name=Linux Apps/' -e 's/^GenericName=.*/GenericName=App store (Debian)/' "$OUT/debian-synaptic.desktop"
+
+# Opening a .deb file uses gdebi from Debian.
+command -v update-desktop-database >/dev/null && update-desktop-database "$OUT" 2>/dev/null
+
+# The taskbar reads launchers only when it starts, so the panel restarts when they changed (with
+# its own environment, which carries the device name, see glibc-shim/device-name.c).
+p=$(pgrep -x xfce4-panel | head -1)
+if [ -n "$p" ] && [ "$(cat "$OUT"/debian-*.desktop 2>/dev/null | md5sum)" != "$before" ]; then
+  ( export $(tr '\0' '\n' < "/proc/$p/environ" | grep -E '^(DBUS_SESSION_BUS_ADDRESS|DISPLAY|LD_PRELOAD|POCKET_DEVICE_NAME)=')
+    xfce4-panel -r ) </dev/null >/dev/null 2>&1 &
+fi
+exit 0

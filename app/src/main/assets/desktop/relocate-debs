@@ -57,10 +57,10 @@ relocate_deb() {
         xargs -0 -r md5sum ) > "$t/md5sums" && mv "$t/md5sums" "$t/p/DEBIAN/md5sums"
   fi
 
-  # Fast compression: the package is installed right away and not kept around.
+  # No compression: the package is installed right away and not kept around.
   # --nocheck: some upstream packages have quirks dpkg accepts on install but dpkg-deb
   # rejects on build (e.g. glibc lists the conffile "gai.conf," with a trailing comma).
-  dpkg-deb --root-owner-group --nocheck -Zgzip -z1 -b "$t/p" "$t/new.deb" >/dev/null &&
+  dpkg-deb --root-owner-group --nocheck -Znone -b "$t/p" "$t/new.deb" >/dev/null &&
     mv -f "$t/new.deb" "$deb"
   local rc=$?
   rm -rf "$t"

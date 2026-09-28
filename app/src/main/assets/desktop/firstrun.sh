@@ -15,6 +15,9 @@ step() { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
 warn() { printf '\033[1;33m!! %s\033[0m\n' "$*"; }
 
 export DEBIAN_FRONTEND=noninteractive
+# Keep the default mirror (packages-cf.termux.dev, behind Cloudflare, fast everywhere). Otherwise
+# pkg tests ~40 mirrors and picks a random one, often on another continent.
+export TERMUX_PKG_NO_MIRROR_SELECT=1
 APT_OPTS='-y -o Dpkg::Options::=--force-confnew -o Dpkg::Options::=--force-confdef'
 pkgi() { yes | pkg install $APT_OPTS "$@"; }
 

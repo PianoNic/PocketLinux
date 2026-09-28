@@ -1,16 +1,26 @@
-// Preload library for the desktop session (bionic, not glibc despite the folder name): gives
-// this app's user the phone's name as display name. Android leaves the passwd "gecos" field
-// empty, so menus showed the Android user ID (u0_a123) instead. The login name stays as it is.
+// Preload library for the desktop session (bionic, not glibc despite the folder name): the
+// panel's start menu shows the phone's name instead of the Android user ID (u0_a123).
+//
+// GLib ignores the passwd "gecos" field on Android, so the menu always shows the login name.
+// This library changes that name, but only inside the panel (which draws the menu): anywhere
+// else a login name like "S25 Ultra von Niclas" would break ls, ssh and scripts. Other
+// programs load it too, through the inherited LD_PRELOAD, and it does nothing there.
 // The name comes from POCKET_DEVICE_NAME, set by bin/desktop.
 #define _GNU_SOURCE
 #include <dlfcn.h>
 #include <pwd.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 static struct passwd *named(struct passwd *pw) {
+    static int in_panel = -1;
+    if (in_panel < 0) {
+        const char *prog = getprogname();
+        in_panel = prog && (!strcmp(prog, "xfce4-panel") || !strcmp(prog, "wrapper-2.0"));
+    }
     const char *name = getenv("POCKET_DEVICE_NAME");
-    if (pw && name && *name && pw->pw_uid == getuid()) pw->pw_gecos = (char *) name;
+    if (in_panel && pw && name && *name && pw->pw_uid == getuid()) pw->pw_name = (char *) name;
     return pw;
 }
 

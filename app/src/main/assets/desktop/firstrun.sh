@@ -89,7 +89,8 @@ set -e
 export DEBIAN_FRONTEND=noninteractive
 apt-get -qq update
 apt-get -y -qq -o Dpkg::Use-Pty=0 install --no-install-recommends synaptic gdebi librsvg2-common breeze-gtk-theme \
-  breeze-icon-theme breeze-cursor-theme fonts-noto-core xdg-utils dbus-x11 ca-certificates sudo >/dev/null
+  breeze-icon-theme breeze-cursor-theme fonts-noto-core xdg-utils dbus-x11 ca-certificates sudo \
+  libgl1 libegl1 libgl1-mesa-dri libgles2 >/dev/null   # OpenGL (software), many apps need it
 id user >/dev/null 2>&1 || useradd -m -s /bin/bash user
 echo 'user ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/user
 # Tells bin/desktop to update the start menu after installs and removals.

@@ -55,14 +55,16 @@ export XDG_RUNTIME_DIR="$TMPDIR" PULSE_SERVER=127.0.0.1 DISPLAY=:0
 # GPU: the whole desktop runs on Zink over Turnip when the phone has an Adreno GPU that
 # Turnip drives. Otherwise, or after `touch ~/.termux/no-gpu`, everything renders on the CPU.
 # If a GPU desktop dies 3 times within 2 minutes, it falls back to the CPU by itself.
-GPU_STARTS="$HOME/.termux/gpu-starts" NO_GPU="$HOME/.termux/no-gpu"
+GPU_STARTS="$HOME/.termux/gpu-starts" NO_GPU="$HOME/.termux/no-gpu" GPU_OK="$HOME/.termux/gpu-ok"
 GPU=0
-if [ ! -e "$NO_GPU" ] && [ -e "$HOME/.termux/gpu-ok" ]; then GPU=1
-elif [ ! -e "$NO_GPU" ] && [ ! -e "$HOME/.termux/gpu-checked" ] && command -v vulkaninfo >/dev/null; then
-  # Checked once: vulkaninfo can take a few seconds.
-  touch "$HOME/.termux/gpu-checked"
-  timeout 15 vulkaninfo --summary 2>/dev/null | grep -qi turnip && touch "$HOME/.termux/gpu-ok" && GPU=1
-fi
+[ -e "$GPU_OK" ] && [ ! -e "$NO_GPU" ] && GPU=1
+# Looks for Turnip. Runs only when XFCE starts and until it succeeds once. The output is kept
+# in $TMPDIR/gpu-check.log for when it does not.
+gpu_check() {
+  [ -e "$NO_GPU" ] || [ -e "$GPU_OK" ] || ! command -v vulkaninfo >/dev/null && return
+  timeout 15 vulkaninfo --summary > "$TMPDIR/gpu-check.log" 2>&1
+  grep -qi 'driverName.*turnip' "$TMPDIR/gpu-check.log" && touch "$GPU_OK" && GPU=1 && gpu_mode
+}
 gpu_mode() {
   local XFWM="$HOME/.config/xfce4/xfconf/xfce-perchannel-xml/xfwm4.xml" VBLANK=off COMPOSITE=false
   if [ $GPU = 1 ]; then
@@ -212,6 +214,7 @@ fi
 
 if ! xfce_alive; then
   RESTARTED=1
+  gpu_check
   echo "$(date '+%F %T') starting XFCE (GPU: $GPU)"
   if [ $GPU = 1 ]; then
     now=$(date +%s)
@@ -229,6 +232,11 @@ if ! xfce_alive; then
   kill_leftovers
   slim_config
   sleep 0.5
+  # The phone's name as the user's display name (menus showed u0_a123), see glibc-shim/device-name.c.
+  if [ -f "$PREFIX/libexec/desktop/libdevice-name.so" ] && [ -s "$PREFIX/var/device-name" ]; then
+    export POCKET_DEVICE_NAME="$(cat "$PREFIX/var/device-name")"
+    export LD_PRELOAD="${LD_PRELOAD:+$LD_PRELOAD:}$PREFIX/libexec/desktop/libdevice-name.so"
+  fi
   nohup dbus-launch --exit-with-session startxfce4 >>"$TMPDIR/xfce.log" 2>&1 &
   # First start: apply the Plasma-like Breeze look once the session is up.
   if [ ! -e "$HOME/.termux/theme-applied" ] && command -v desktop-theme >/dev/null; then

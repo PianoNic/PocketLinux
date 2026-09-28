@@ -27,6 +27,8 @@ android {
         implementation "androidx.core:core:1.13.1"
         implementation "androidx.preference:preference:1.2.1"   // PocketDisplay uses lorie's Prefs
         implementation "com.google.android.material:material:1.14.0"
+        // Empty artifact: stops guava's ListenableFuture from being on the classpath twice.
+        implementation "com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava"
 
         implementation project(":termux-shared")
         implementation project(":lorie")   // Termux:X11 display + X server, built in

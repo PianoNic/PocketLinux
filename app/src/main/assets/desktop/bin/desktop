@@ -239,13 +239,6 @@ if ! xfce_alive; then
     export LD_PRELOAD="${LD_PRELOAD:+$LD_PRELOAD:}$PREFIX/libexec/desktop/libdevice-name.so"
   fi
   nohup dbus-launch --exit-with-session startxfce4 >>"$TMPDIR/xfce.log" 2>&1 &
-  # First start: apply the Plasma-like Breeze look once the session is up.
-  if [ ! -e "$HOME/.termux/theme-applied" ] && command -v desktop-theme >/dev/null; then
-    # Only once the panel and xfdesktop run, otherwise they start after it with their defaults.
-    ( for i in $(seq 1 90); do pgrep -x xfce4-panel >/dev/null && pgrep -x xfdesktop >/dev/null && break; sleep 1; done
-      sleep 3 && desktop-theme dark >>"$TMPDIR/theme.log" 2>&1 &&
-      touch "$HOME/.termux/theme-applied" ) </dev/null >/dev/null 2>&1 &
-  fi
 fi
 
 # Debian apps in the start menu: refreshed on every XFCE start and after apt changes in Debian

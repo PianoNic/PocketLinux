@@ -22,7 +22,7 @@ icon() {
   for e in svg png xpm; do
     [ -e "$ROOTFS/usr/share/pixmaps/$n.$e" ] && { echo "$ROOTFS/usr/share/pixmaps/$n.$e"; return; }
   done
-  echo "$n"   # an icon name the Breeze theme may know
+  echo "$n"   # an icon name the icon theme may know
 }
 
 for f in "$ROOTFS"/usr/share/applications/*.desktop; do

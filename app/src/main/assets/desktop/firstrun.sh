@@ -1,6 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/bash
 # Termux Desktop: one-time automatic setup, runs on first app start.
-# Installs XFCE (native, no proot), GPU (Turnip + Zink) and the Breeze theme, plus the dev tools
+# Installs XFCE (native, no proot, its stock look) and GPU support (Turnip + Zink), plus the dev tools
 # and .NET, and Debian for Linux apps when asked for.
 # Re-run manually any time with: desktop-setup [--dev] [--distro]
 
@@ -23,7 +23,7 @@ done
 # Progress for the boot screen: "<step> <steps> <title>" in desktop-setup.progress. The number of
 # steps depends on the packs and on whether this runs on the pre-installed system.
 PROGRESS="$HOME/.termux/desktop-setup.progress"
-STEPS=5
+STEPS=4
 [ -e "$PREFIX/etc/pocket-linux-system" ] || STEPS=$((STEPS + 1))
 [ -e "$HOME/.termux/distro" ] && STEPS=$((STEPS + 1))
 [ -e "$HOME/.termux/dev-tools" ] && STEPS=$((STEPS + 2))
@@ -66,8 +66,6 @@ fi
 
 step "Desktop: XFCE + audio (the display is built into the app)"
 pkgi xkeyboard-config xfce4 xfce4-terminal pulseaudio dbus firefox synaptic || warn "some desktop packages failed"
-step "Plasma-like look: Breeze theme, Whisker Menu, Docklike taskbar"
-pkgi breeze-gtk kf6-breeze-icons xfce4-whiskermenu-plugin xfce4-docklike-plugin || warn "theme packages failed"
 
 step "GPU acceleration: Turnip (Adreno Vulkan) + Zink (OpenGL on Vulkan)"
 pkgi mesa-vulkan-icd-freedreno vulkan-tools mesa-demos 2>/dev/null || warn "GPU packages failed, desktop falls back to CPU"
@@ -88,8 +86,8 @@ set -e
 [ -e /etc/pocket-linux-debian ] && exit 0
 export DEBIAN_FRONTEND=noninteractive
 apt-get -qq update
-apt-get -y -qq -o Dpkg::Use-Pty=0 install --no-install-recommends synaptic gdebi librsvg2-common breeze-gtk-theme \
-  breeze-icon-theme breeze-cursor-theme fonts-noto-core xdg-utils dbus-x11 ca-certificates sudo \
+apt-get -y -qq -o Dpkg::Use-Pty=0 install --no-install-recommends synaptic gdebi librsvg2-common \
+  adwaita-icon-theme fonts-dejavu-core xdg-utils dbus-x11 ca-certificates sudo \
   libgl1 libegl1 libgl1-mesa-dri libgles2 >/dev/null   # OpenGL (software), many apps need it
 id user >/dev/null 2>&1 || useradd -m -s /bin/bash user
 echo 'user ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/user

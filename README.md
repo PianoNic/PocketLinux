@@ -42,12 +42,10 @@ and running on the regular Termux package repositories.
   with the CPU as fallback on other phones or if the driver misbehaves.
 - **Fits any screen** - resolution follows the window and the scale follows the screen density:
   portrait, landscape, split screen and external monitors.
-- **Plasma look** - Breeze Dark (or light) theme, Plasma's Scarlet Tree wallpaper, one bottom
-  panel with a dock-like taskbar.
 - **App store** - Synaptic, to search for and install any of the Termux packages.
 - **Linux apps on request** - an optional Debian 13 with its own app store ("Linux Apps", 68,000
   packages) for everything Termux does not package, such as VS Code or `.deb` downloads. Its apps
-  appear in the start menu and open in the same Breeze look. One switch at setup, or
+  appear in the start menu and use the same look as the desktop. One switch at setup, or
   `desktop-setup --distro` later. `debian-fast on` makes them much faster (see below).
 - **Dev tools on request** - Node, Angular CLI, Python, clang, Rust, code-server and **.NET 10**
   (`dotnet new`, `build` and `run` work). One switch at setup, or `desktop-setup --dev` later.
@@ -68,7 +66,6 @@ Updates install over the existing app and keep your files.
 | Command | What it does |
 | --- | --- |
 | `desktop` | Start or repair the desktop |
-| `desktop-theme dark` / `light` | Reapply the Plasma-like look |
 | `gpu <program>` | Run one program with GPU acceleration, also when the desktop runs on the CPU |
 | `touch ~/.termux/no-gpu` | Keep the desktop on the CPU (remove the file to go back to the GPU) |
 | `desktop-setup [--dev] [--distro]` | Run the first-start setup again, `--dev` adds the developer tools, `--distro` Debian |
@@ -135,7 +132,7 @@ loader the first time `dotnet` runs.
 | `app/src/main/java/com/termux/app/DesktopService.java` | Keeps the desktop alive, watchdog |
 | `app/src/main/java/com/termux/app/PocketDisplay.java` | Display defaults and automatic scale |
 | `app/src/main/java/com/termux/app/Relocator.java` | Moves Termux paths to this app's ID |
-| `app/src/main/assets/desktop/` | First-run setup, `desktop`, `desktop-theme`, `gpu`, apt hook |
+| `app/src/main/assets/desktop/` | First-run setup, `desktop`, `gpu`, `debian-*`, apt hook |
 | `external/termux-x11` | Termux:X11 (X server and display), built in as a library |
 | `glibc-shim/` | `/tmp` redirect for .NET |
 

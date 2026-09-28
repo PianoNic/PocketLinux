@@ -338,9 +338,6 @@ public class BootActivity extends Activity {
             File libexec = new File(PREFIX, "libexec/desktop");
             libexec.mkdirs();
             copyAsset("desktop/firstrun.sh", new File(libexec, "firstrun.sh"));
-            File share = new File(PREFIX, "share/pocket-linux");
-            share.mkdirs();
-            copyAsset("desktop/share/menu-icon.svg", new File(share, "menu-icon.svg"));
             // apt hook that moves every package to this app's data directory (see Relocator).
             copyAsset("desktop/relocate-debs", new File(libexec, "relocate-debs"));
             // glibc preload library for .NET (redirects its hardcoded /tmp); set up by bin/dotnet.

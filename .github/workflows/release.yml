@@ -15,7 +15,32 @@ permissions:
   contents: write   # upload the APK to the release
 
 jobs:
+  # The pre-installed system (Termux plus the desktop) that the app downloads on first start,
+  # see scripts/build-system-image.sh. Built on arm64, where the Termux image runs natively.
+  system-image:
+    runs-on: ubuntu-24.04-arm
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    outputs:
+      sha256: ${{ steps.build.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Build the system image
+        id: build
+        run: |
+          bash scripts/build-system-image.sh
+          echo "sha256=$(cat dist/pocket-linux-system-aarch64.zip.sha256)" >> "$GITHUB_OUTPUT"
+
+      - name: Attach it to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" dist/pocket-linux-system-aarch64.zip --clobber
+
   release:
+    needs: system-image
     runs-on: ubuntu-24.04
     env:
       TAG: ${{ github.event.release.tag_name || inputs.tag }}
@@ -35,6 +60,8 @@ jobs:
       - name: Build signed release APK
         env:
           POCKET_VERSION: ${{ env.TAG }}
+          POCKET_SYSTEM_URL: https://github.com/${{ github.repository }}/releases/download/${{ env.TAG }}/pocket-linux-system-aarch64.zip
+          POCKET_SYSTEM_SHA256: ${{ needs.system-image.outputs.sha256 }}
           KEYSTORE_BASE64: ${{ secrets.POCKET_KEYSTORE_BASE64 }}
           POCKET_KEYSTORE_PASSWORD: ${{ secrets.POCKET_KEYSTORE_PASSWORD }}
           POCKET_KEY_ALIAS: ${{ secrets.POCKET_KEY_ALIAS }}

@@ -50,6 +50,9 @@ android {
             versionCode = maj * 1000000 + min * 1000 + pat
         }
 
+        // Pre-installed system for the first start (release CI sets these, see TermuxInstaller).
+        buildConfigField "String", "POCKET_SYSTEM_URL", "\"" + (System.getenv("POCKET_SYSTEM_URL") ?: "") + "\""
+        buildConfigField "String", "POCKET_SYSTEM_SHA256", "\"" + (System.getenv("POCKET_SYSTEM_SHA256") ?: "") + "\""
         buildConfigField "String", "TERMUX_PACKAGE_VARIANT", "\"" + project.ext.packageVariant + "\"" // Used by TermuxApplication class
 
         manifestPlaceholders.TERMUX_PACKAGE_NAME = "ch.pocketl"

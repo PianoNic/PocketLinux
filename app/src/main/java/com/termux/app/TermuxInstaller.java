@@ -23,9 +23,12 @@ import com.termux.shared.termux.TermuxUtils;
 import com.termux.shared.termux.shell.command.environment.TermuxShellEnvironment;
 
 import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
+import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
@@ -151,11 +154,12 @@ final class TermuxInstaller {
 
                     Logger.logInfo(LOG_TAG, "Extracting bootstrap zip to prefix staging directory \"" + TERMUX_STAGING_PREFIX_DIR_PATH + "\".");
 
-                    final byte[] buffer = new byte[8096];
+                    final byte[] buffer = new byte[1 << 16];
                     final List<Pair<String, String>> symlinks = new ArrayList<>(50);
+                    final List<String> executables = new ArrayList<>();
 
-                    final byte[] zipBytes = loadZipBytes();
-                    try (ZipInputStream zipInput = new ZipInputStream(new ByteArrayInputStream(zipBytes))) {
+                    final File zipFile = downloadSystem(activity);
+                    try (ZipInputStream zipInput = new ZipInputStream(new BufferedInputStream(new FileInputStream(zipFile), 1 << 16))) {
                         ZipEntry zipEntry;
                         while ((zipEntry = zipInput.getNextEntry()) != null) {
                             if (zipEntry.getName().equals("SYMLINKS.txt")) {
@@ -175,6 +179,12 @@ final class TermuxInstaller {
                                         return;
                                     }
                                 }
+                            } else if (zipEntry.getName().equals("EXECUTABLES.txt")) {
+                                // Pre-installed system: file modes, which zip entries do not carry.
+                                BufferedReader reader = new BufferedReader(new InputStreamReader(zipInput));
+                                String line;
+                                while ((line = reader.readLine()) != null)
+                                    if (!line.isEmpty()) executables.add(line);
                             } else {
                                 String zipEntryName = zipEntry.getName();
                                 File targetFile = new File(TERMUX_STAGING_PREFIX_DIR_PATH, zipEntryName);
@@ -187,17 +197,10 @@ final class TermuxInstaller {
                                 }
 
                                 if (!isDirectory) {
-                                    // Read the whole entry so the Termux paths inside can be moved
-                                    // to this app's data directory (see Relocator).
-                                    java.io.ByteArrayOutputStream entry = new java.io.ByteArrayOutputStream(
-                                        (int) Math.max(zipEntry.getSize(), 8192));
-                                    int readBytes;
-                                    while ((readBytes = zipInput.read(buffer)) != -1)
-                                        entry.write(buffer, 0, readBytes);
-                                    byte[] data = entry.toByteArray();
-                                    Relocator.relocate(data, data.length);
+                                    // The Termux paths inside are moved to this app's data directory
+                                    // on the way (see Relocator).
                                     try (FileOutputStream outStream = new FileOutputStream(targetFile)) {
-                                        outStream.write(data);
+                                        copyRelocated(zipInput, outStream, buffer);
                                     }
                                     if (zipEntryName.startsWith("bin/") || zipEntryName.startsWith("libexec") ||
                                         zipEntryName.startsWith("lib/apt/apt-helper") || zipEntryName.startsWith("lib/apt/methods")) {
@@ -214,6 +217,12 @@ final class TermuxInstaller {
                     for (Pair<String, String> symlink : symlinks) {
                         Os.symlink(symlink.first, symlink.second);
                     }
+                    for (String path : executables) {
+                        //noinspection OctalInteger
+                        Os.chmod(TERMUX_STAGING_PREFIX_DIR_PATH + "/" + path, 0700);
+                    }
+                    //noinspection ResultOfMethodCallIgnored
+                    zipFile.delete();
 
                     Logger.logInfo(LOG_TAG, "Moving termux prefix staging to prefix directory.");
 
@@ -230,7 +239,6 @@ final class TermuxInstaller {
 
                 } catch (final Exception e) {
                     showBootstrapErrorDialog(activity, whenDone, Logger.getStackTracesMarkdownString(null, Logger.getStackTracesStringArray(e)));
-
                 }
             }
         }.start();
@@ -373,39 +381,78 @@ final class TermuxInstaller {
     }
 
     // The base system is downloaded on first start instead of being embedded in the APK.
-    // Pinned to an exact release and verified by SHA-256.
+    // Release builds point at the pre-installed system (Termux plus the desktop, built by CI,
+    // see scripts/build-system-image.sh). Without one, or if it cannot be downloaded, the plain
+    // Termux bootstrap is used and the setup installs the desktop package by package.
+    // Both are pinned and verified by SHA-256.
     private static final String BOOTSTRAP_URL =
         "https://github.com/termux/termux-packages/releases/download/bootstrap-2026.02.12-r1%2Bapt.android-7/bootstrap-aarch64.zip";
     private static final String BOOTSTRAP_SHA256 = "ea2aeba8819e517db711f8c32369e89e7c52cee73e07930ff91185e1ab93f4f3";
 
-    public static byte[] loadZipBytes() throws Exception {
+    private static File downloadSystem(Context context) throws Exception {
+        File target = new File(context.getCacheDir(), "system.zip");
+        if (!com.termux.BuildConfig.POCKET_SYSTEM_URL.isEmpty()) {
+            try {
+                return download(com.termux.BuildConfig.POCKET_SYSTEM_URL, com.termux.BuildConfig.POCKET_SYSTEM_SHA256, target);
+            } catch (IOException e) {
+                Logger.logStackTraceWithMessage(LOG_TAG, "Pre-installed system not available, using the Termux bootstrap", e);
+            }
+        }
+        return download(BOOTSTRAP_URL, BOOTSTRAP_SHA256, target);
+    }
+
+    /** Downloads to a file (the pre-installed system is too big to hold in memory). */
+    private static File download(String url, String sha256, File target) throws Exception {
         Exception last = null;
         for (int attempt = 0; attempt < 3; attempt++) {
             try {
-                java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(BOOTSTRAP_URL).openConnection();
+                java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
                 c.setInstanceFollowRedirects(true);
                 c.setConnectTimeout(20000);
                 c.setReadTimeout(60000);
                 java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
-                java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream(32 * 1024 * 1024);
-                try (java.io.InputStream in = c.getInputStream()) {
-                    byte[] buf = new byte[65536];
+                try (InputStream in = c.getInputStream(); FileOutputStream out = new FileOutputStream(target)) {
+                    byte[] buf = new byte[1 << 16];
                     int n;
                     while ((n = in.read(buf)) > 0) { out.write(buf, 0, n); md.update(buf, 0, n); }
                 }
                 StringBuilder hex = new StringBuilder();
                 for (byte b : md.digest()) hex.append(String.format("%02x", b));
-                if (!BOOTSTRAP_SHA256.equals(hex.toString()))
+                if (!sha256.equals(hex.toString()))
                     throw new SecurityException("Base system download is corrupt (checksum mismatch)");
-                return out.toByteArray();
+                return target;
             } catch (SecurityException e) {
+                //noinspection ResultOfMethodCallIgnored
+                target.delete();
                 throw e;
             } catch (Exception e) {
                 last = e;
                 Thread.sleep(2000);
             }
         }
-        throw new java.io.IOException("Could not download the base system. Check your internet connection.", last);
+        //noinspection ResultOfMethodCallIgnored
+        target.delete();
+        throw new IOException("Could not download the base system. Check your internet connection.", last);
+    }
+
+    /**
+     * Copies a zip entry, moving the Termux paths inside to this app's data directory (see
+     * Relocator). Works in chunks, so big files like Firefox's libxul need little memory. The
+     * last bytes of each chunk are carried over, so a path split across two chunks is found too.
+     */
+    static void copyRelocated(InputStream in, java.io.OutputStream out, byte[] buf) throws IOException {
+        final int keep = Relocator.LONGEST_PATTERN - 1;
+        int have = 0, n;
+        while ((n = in.read(buf, have, buf.length - have)) != -1) {
+            have += n;
+            if (have < buf.length) continue;
+            Relocator.relocate(buf, have);
+            out.write(buf, 0, have - keep);
+            System.arraycopy(buf, have - keep, buf, 0, keep);
+            have = keep;
+        }
+        Relocator.relocate(buf, have);
+        out.write(buf, 0, have);
     }
 
 }

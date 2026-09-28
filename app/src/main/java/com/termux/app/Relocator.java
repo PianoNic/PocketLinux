@@ -26,6 +26,8 @@ final class Relocator {
     static final String OWN = TermuxConstants.TERMUX_PACKAGE_NAME;
 
     private static final byte[][][] RULES;
+    /** Length of the longest path form, for callers that relocate a stream in chunks. */
+    static final int LONGEST_PATTERN;
 
     static {
         if (OWN.length() != UPSTREAM.length())
@@ -40,6 +42,9 @@ final class Relocator {
             RULES[i][0] = rules[i][0].getBytes(StandardCharsets.US_ASCII);
             RULES[i][1] = rules[i][1].getBytes(StandardCharsets.US_ASCII);
         }
+        int longest = 0;
+        for (String[] rule : rules) longest = Math.max(longest, rule[0].length());
+        LONGEST_PATTERN = longest;
     }
 
     static boolean needed() {

@@ -230,8 +230,7 @@ public class BootActivity extends Activity {
     private void pollSetup() {
         mHandler.postDelayed(() -> {
             if (mState != State.SETUP) return;
-            mLog.setText(tail(SETUP_LOG, 6000));
-            mLogScroll.post(() -> mLogScroll.fullScroll(View.FOCUS_DOWN));
+            showLog(tail(SETUP_LOG, 6000));
 
             if (SETUP_EXIT.exists() && !DesktopService.sSetupRunning) {
                 String code = read(SETUP_EXIT).trim();
@@ -370,7 +369,7 @@ public class BootActivity extends Activity {
         setState(State.LOGS, "Logs", "Tap Share to send them.");
         String text = collectLogs();
         mLog.setText(text);
-        mLogScroll.post(() -> mLogScroll.fullScroll(View.FOCUS_DOWN));
+        mLogScroll.post(() -> mLogScroll.scrollTo(0, mLog.getBottom()));
         showButtons("Share", v -> {
             Intent send = new Intent(Intent.ACTION_SEND).setType("text/plain")
                 .putExtra(Intent.EXTRA_SUBJECT, getString(com.termux.R.string.app_display_name) + " logs")
@@ -669,6 +668,17 @@ public class BootActivity extends Activity {
         } catch (Exception e) {
             return "";
         }
+    }
+
+    /**
+     * Updates the live log only when it changed, and follows new lines only while the view is
+     * at the bottom, so it neither jumps around nor pulls away from what the user scrolled to.
+     */
+    private void showLog(String text) {
+        if (text.contentEquals(mLog.getText())) return;
+        boolean atBottom = !mLogScroll.canScrollVertically(1);
+        mLog.setText(text);
+        if (atBottom) mLogScroll.post(() -> mLogScroll.scrollTo(0, mLog.getBottom()));
     }
 
     /** Last bytes of the log, cleaned of colour codes and progress-bar carriage returns. */

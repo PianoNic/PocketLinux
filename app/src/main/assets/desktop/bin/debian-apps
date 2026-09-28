@@ -40,12 +40,13 @@ for f in "$ROOTFS"/usr/share/applications/*.desktop; do
     sed -i "/^\[Desktop Entry\]/a StartupWMClass=$(basename "$prog")" "$OUT/debian-$name"
   fi
   # Chromium and Electron apps (VS Code, Chrome, Discord, ...) abort when they cannot start
-  # their sandbox, which proot cannot give them. They ship chrome-sandbox next to themselves.
+  # their sandbox, which proot cannot give them, and with Mesa's software OpenGL their window
+  # stays white. They ship chrome-sandbox next to themselves.
   real="$prog"
   case "$prog" in /*) l=$(readlink "$ROOTFS$prog" 2>/dev/null) && case "$l" in
       /*) real="$l" ;; *) real="$(dirname "$prog")/$l" ;; esac ;; esac
   if [ -n "$prog" ] && [ -e "$ROOTFS$(dirname "$real")/chrome-sandbox" ]; then
-    sed -i "s|^\(Exec=debian-run [^ ]*\)|\1 --no-sandbox|" "$OUT/debian-$name"
+    sed -i "s|^\(Exec=debian-run [^ ]*\)|\1 --no-sandbox --disable-gpu|" "$OUT/debian-$name"
   fi
 done
 

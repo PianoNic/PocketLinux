@@ -17,7 +17,7 @@ GUEST_ENV=(DISPLAY="${DISPLAY:-:0}" PULSE_SERVER=127.0.0.1 XDG_RUNTIME_DIR=/tmp 
            HOME="$GUEST_HOME" USER="$GUEST_USER" TERM="${TERM:-xterm-256color}"
            NO_AT_BRIDGE=1 GTK_A11Y=none   # GTK otherwise waits 25 s for an accessibility bus
            SHELL=/bin/bash                # proot passes /sbin/nologin, apps like VS Code run $SHELL
-           CHROMIUM_FLAGS=--no-sandbox    # Debian's chromium: no sandbox possible under proot
+           CHROMIUM_FLAGS="--no-sandbox --disable-gpu"   # Debian's chromium, see debian-apps
            PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin)
 
 FAST="$PREFIX/libexec/proroot/libproroot.so"

@@ -70,13 +70,14 @@ gpu_mode() {
   if [ $GPU = 1 ]; then
     unset LIBGL_ALWAYS_SOFTWARE
     export MESA_LOADER_DRIVER_OVERRIDE=zink GALLIUM_DRIVER=zink ZINK_DESCRIPTORS=lazy TU_DEBUG=noconform,sysmem
-    # vsync through OpenGL crashes xfwm4 on Zink (no GL context in libepoxy), XRender is fine.
-    VBLANK=off COMPOSITE=true
+    # No compositor: its OpenGL vsync crashes xfwm4 on Zink, and with it Electron apps (VS Code)
+    # pick a transparent window that stays invisible. Apps still render on the GPU.
+    VBLANK=off COMPOSITE=false
   else
     unset MESA_LOADER_DRIVER_OVERRIDE ZINK_DESCRIPTORS TU_DEBUG
     export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe
   fi
-  # xfwm4: compositor and vsync only with the GPU (on the CPU they cost more than they give).
+  # xfwm4: no compositor and no vsync, both cost more than they give here.
   if grep -q 'name="vblank_mode"' "$XFWM" 2>/dev/null; then
     # Only these two values, the theme keeps its own settings in the same file.
     sed -i -e "s|\(name=\"vblank_mode\" type=\"string\" value=\"\)[^\"]*|\1$VBLANK|" \

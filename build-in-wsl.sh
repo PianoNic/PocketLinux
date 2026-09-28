@@ -9,7 +9,7 @@ export ANDROID_HOME="${ANDROID_HOME:-$HOME/android-sdk}"
 
 mkdir -p "$DST"
 rsync -a --delete \
-  --exclude '/build/' --exclude '/*/build/' --exclude '/dist/' --exclude '/.gradle/' --exclude '/local.properties' --exclude '/keystore.properties' \
+  --exclude '/build/' --exclude '/*/build/' --exclude '/dist/' --exclude '/.gradle/' --exclude '/local.properties' --exclude '/keystore.properties' --exclude '/.claude/' \
   --exclude 'external/termux-x11/*/build/' --exclude 'external/termux-x11/lorie/.cxx/' \
   --exclude 'external/termux-x11/shell-loader/stub/build/' \
   "$SRC/" "$DST/"

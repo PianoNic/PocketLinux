@@ -47,3 +47,4 @@ Thumbs.db
 /keystore.properties
 *.keystore
 /release*.jks
+.claude/
